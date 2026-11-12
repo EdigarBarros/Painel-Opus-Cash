@@ -192,7 +192,7 @@ export function Ficha({ id }: { id: string }) {
       {janela === 'revogar' && (
         <AcaoComMotivo titulo="Tirar o acesso" texto={`${f.conta.email} volta para a tela de assinatura na hora. Pagamentos registrados continuam guardados.`}
           botao="Tirar acesso" perigo aoFechar={() => setJanela(null)} aoTerminar={terminar}
-          executar={async (motivo) => { await api('acesso', { id, acao: 'revogar', motivo }); return 'Acesso retirado.' }} />
+          executar={async (motivo) => { await api('acesso', { id, tipo: 'revogar', motivo }); return 'Acesso retirado.' }} />
       )}
       {janela === 'senha_email' && (
         <AcaoSimples titulo="Mandar e-mail de senha nova" botao="Mandar e-mail" aoFechar={() => setJanela(null)} aoTerminar={terminar}
@@ -292,7 +292,7 @@ function Liberar({ f, aoFechar, aoTerminar }: PropsJanela & { f: FichaDados }) {
       <FormularioDeAcao textoBotao="Liberar acesso" pode={pode} aoTerminar={aoTerminar} executar={async () => {
         await api('acesso', {
           id: f.conta.id,
-          acao: opcao === 'vitalicio' ? 'vitalicio' : opcao === 'ate' ? 'ate' : 'dias',
+          tipo: opcao === 'vitalicio' ? 'vitalicio' : opcao === 'ate' ? 'ate' : 'dias',
           dias: opcao === 'vitalicio' || opcao === 'ate' ? undefined : dias,
           ate: opcao === 'ate' ? fim!.toISOString() : undefined,
           motivo,
@@ -362,7 +362,7 @@ function EstenderTeste({ f, aoFechar, aoTerminar }: PropsJanela & { f: FichaDado
   return (
     <Modal titulo="Estender o teste grátis" aoFechar={aoFechar}>
       <FormularioDeAcao textoBotao="Estender teste" pode={ok && motivo.trim().length > 0} aoTerminar={aoTerminar}
-        executar={async () => { await api('acesso', { id: f.conta.id, acao: 'teste', dias: n, motivo }); return `Teste grátis até ${fmtData(new Date(base + n * DIA).toISOString())}.` }}>
+        executar={async () => { await api('acesso', { id: f.conta.id, tipo: 'teste', dias: n, motivo }); return `Teste grátis até ${fmtData(new Date(base + n * DIA).toISOString())}.` }}>
         <label className="campo curto"><span>Mais quantos dias</span>
           <input type="number" min={1} max={365} value={dias} onChange={(e) => setDias(e.target.value)} required />
         </label>

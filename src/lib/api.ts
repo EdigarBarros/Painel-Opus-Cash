@@ -22,7 +22,7 @@ type Resposta = { ok?: boolean; dados?: unknown; erro?: string; precisa_codigo?:
 
 /** Chama a função "admin" no servidor. É o único caminho do painel para o banco. */
 export async function api<T>(acao: string, dados: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('admin', { body: { acao, ...dados } })
+  const { data, error } = await supabase.functions.invoke('admin', { body: { ...dados, acao } })
   if (!error) return ((data as Resposta)?.dados ?? data) as T
   // resposta que não é 2xx chega como erro, com o corpo em error.context
   const ctx = (error as { context?: unknown }).context

@@ -101,7 +101,7 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
     case 'acesso': {
       const pagamento = p.pagamento && typeof p.pagamento === 'object' ? p.pagamento as Record<string, unknown> : null
       const { data, error } = await db.rpc('adm_mudar_acesso', {
-        p_admin: admin.id, p_alvo: uuid(p.id), p_acao: texto(p.acao, 20), p_dias: Number.isInteger(p.dias) ? p.dias : null,
+        p_admin: admin.id, p_alvo: uuid(p.id), p_acao: texto(p.tipo, 20), p_dias: Number.isInteger(p.dias) ? p.dias : null,
         p_ate: typeof p.ate === 'string' ? p.ate : null, p_motivo: motivoObrigatorio(p.motivo),
         p_pagamento: pagamento ? {
           valor: Math.round(Number(pagamento.valor)), forma: texto(pagamento.forma, 20) || 'pix',

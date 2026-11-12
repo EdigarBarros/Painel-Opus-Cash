@@ -5,7 +5,7 @@
 //   3. o login foi confirmado com o código do celular (aal2). Sem isso, só responde "quem sou eu" (para o painel pedir o código).
 // Toda ação que muda algo fica em adm_registro (quem, o quê, em quem, quando e por quê).
 //
-// Segredos: STRIPE_SECRET_KEY (o mesmo do OpusCash, para cancelar a cobrança ao excluir uma conta). SUPABASE_URL, SUPABASE_ANON_KEY
+// Segredos: STRIPE_SECRET_KEY (o mesmo do OpusCash: ler e mexer na assinatura no cartão, reembolsar e cancelar ao excluir). SUPABASE_URL, SUPABASE_ANON_KEY
 // e SUPABASE_SERVICE_ROLE_KEY o Supabase já fornece. Opcional: PAINEL_ORIGENS (endereços extras do painel, separados por vírgula).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
@@ -71,6 +71,164 @@ async function contaAlvo(db: SupabaseClient, id: string) {
 async function naoEhAdmin(db: SupabaseClient, id: string) {
   const { data } = await db.from('adm_admins').select('user_id').eq('user_id', id).maybeSingle()
   if (data) throw new Recusa('Esta ação não pode ser feita na conta de um administrador.')
+}
+
+// ---------- Stripe ----------
+const STRIPE = 'https://api.stripe.com/v1'
+const iso = (s?: number | null) => (s ? new Date(s * 1000).toISOString() : null)
+
+/** Chamada ao Stripe com a chave secreta (que só existe aqui no servidor). Erro do Stripe vira mensagem para o painel. */
+// deno-lint-ignore no-explicit-any
+async function stripe(caminho: string, metodo = 'GET', params?: Record<string, string>): Promise<any> {
+  const chave = Deno.env.get('STRIPE_SECRET_KEY')
+  if (!chave) throw new Recusa('O Stripe não está configurado no servidor.', 500)
+  const r = await fetch(`${STRIPE}/${caminho}`, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${chave}`, ...(params ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
+    body: params ? new URLSearchParams(params).toString() : undefined,
+  })
+  const j = await r.json().catch(() => null)
+  if (!r.ok) throw new Recusa(`Stripe: ${j?.error?.message ?? `erro ${r.status}`}`, r.status === 404 ? 404 : 502)
+  return j
+}
+
+// deno-lint-ignore no-explicit-any
+const cartaoDe = (pm: any) => (pm?.card ? { bandeira: pm.card.brand, final: pm.card.last4, validade: `${pm.card.exp_month}/${pm.card.exp_year}` } : null)
+// deno-lint-ignore no-explicit-any
+const fimDoPeriodo = (sub: any) => sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end ?? null
+
+/**
+ * Depois de uma ação no Stripe, grava na hora o estado da assinatura (o mesmo que o stripe-webhook gravaria logo depois),
+ * para a ficha já mostrar o certo. Como o webhook, não mexe em quem tem Pix ou cortesia.
+ */
+async function sincronizarAssinatura(db: SupabaseClient, userId: string, sid: string) {
+  const { data: atual } = await db.from('assinaturas').select('status').eq('user_id', userId).maybeSingle()
+  if (atual && ['cortesia', 'pix'].includes(atual.status)) return
+  let sub
+  try { sub = await stripe(`subscriptions/${sid}`) } catch { return }
+  await db.from('assinaturas').update({
+    status: sub.status, teste_fim: iso(sub.trial_end), periodo_fim: iso(fimDoPeriodo(sub)),
+    cancela_no_fim: Boolean(sub.cancel_at_period_end), atualizado_em: new Date().toISOString(),
+  }).eq('user_id', userId)
+}
+
+/** O que o Stripe sabe da conta: assinatura, cartão, faturas e cobranças (cartão e Pix). */
+async function lerStripe(db: SupabaseClient, id: string) {
+  const { data: ass } = await db.from('assinaturas').select('stripe_customer_id, stripe_subscription_id').eq('user_id', id).maybeSingle()
+  const cus = ass?.stripe_customer_id
+  if (!cus) return { cliente: null }
+  const [cliente, subs, faturas, cobrancas] = await Promise.all([
+    stripe(`customers/${cus}?expand[]=invoice_settings.default_payment_method`),
+    stripe(`subscriptions?customer=${cus}&status=all&limit=5&expand[]=data.default_payment_method`),
+    stripe(`invoices?customer=${cus}&limit=10`),
+    stripe(`charges?customer=${cus}&limit=20`),
+  ])
+  if (cliente?.deleted) return { cliente: null, apagado: true }
+  // deno-lint-ignore no-explicit-any
+  const lista: any[] = subs?.data ?? []
+  const sub = lista.find((s) => s.id === ass?.stripe_subscription_id) ?? lista.find((s) => !['canceled', 'incomplete_expired'].includes(s.status)) ?? lista[0] ?? null
+  return {
+    cliente: { id: cus, email: cliente.email, criado: iso(cliente.created), cartao: cartaoDe(cliente.invoice_settings?.default_payment_method) },
+    assinatura: sub ? {
+      id: sub.id, status: sub.status, criada: iso(sub.created), fim_periodo: iso(fimDoPeriodo(sub)), teste_fim: iso(sub.trial_end),
+      cancela_no_fim: Boolean(sub.cancel_at_period_end), cancela_em: iso(sub.cancel_at), cancelada_em: iso(sub.canceled_at),
+      cartao: cartaoDe(sub.default_payment_method),
+    } : null,
+    // deno-lint-ignore no-explicit-any
+    faturas: (faturas?.data ?? []).map((f: any) => ({
+      id: f.id, numero: f.number, status: f.status, valor: f.amount_due, pago: f.amount_paid, moeda: f.currency, criada: iso(f.created),
+      link: f.status === 'open' ? f.hosted_invoice_url : null, tentativas: f.attempt_count, proxima_tentativa: iso(f.next_payment_attempt),
+    })),
+    // deno-lint-ignore no-explicit-any
+    cobrancas: (cobrancas?.data ?? []).map((c: any) => ({
+      id: c.id, valor: c.amount, reembolsado: c.amount_refunded, moeda: c.currency, status: c.status, criada: iso(c.created),
+      tipo: c.payment_method_details?.type ?? null, final: c.payment_method_details?.card?.last4 ?? null,
+      bandeira: c.payment_method_details?.card?.brand ?? null, falha: c.failure_message, recibo: c.receipt_url, descricao: c.description,
+    })),
+  }
+}
+
+const ACOES_STRIPE = ['cancelar_fim', 'desfazer_cancelamento', 'cancelar_agora', 'cobrar_de_novo', 'dias_gratis', 'reembolsar', 'link_cartao']
+
+/** Ações no Stripe pedidas pelo painel. Todas exigem motivo e ficam no registro. */
+async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, unknown>) {
+  const id = uuid(p.id)
+  const tipo = texto(p.tipo, 30)
+  if (!ACOES_STRIPE.includes(tipo)) throw new Recusa('Ação do Stripe desconhecida.')
+  const motivo = motivoObrigatorio(p.motivo)
+  const u = await contaAlvo(db, id)
+  const { data: ass } = await db.from('assinaturas').select('stripe_customer_id, stripe_subscription_id, status').eq('user_id', id).maybeSingle()
+  const cus = ass?.stripe_customer_id
+  if (!cus) throw new Recusa('Esta conta não tem cadastro no Stripe.')
+  const sid = ass?.stripe_subscription_id as string | null
+  const assinatura = () => {
+    if (!sid) throw new Recusa('Esta conta não tem assinatura no cartão.')
+    return sid
+  }
+  let resultado: Record<string, unknown> = { ok: true }
+  let paraRegistro: Record<string, unknown> = {}
+
+  switch (tipo) {
+    case 'cancelar_fim':
+    case 'desfazer_cancelamento':
+      await stripe(`subscriptions/${assinatura()}`, 'POST', { cancel_at_period_end: tipo === 'cancelar_fim' ? 'true' : 'false' })
+      break
+    case 'cancelar_agora':
+      await stripe(`subscriptions/${assinatura()}`, 'DELETE')
+      break
+    case 'cobrar_de_novo': {
+      const fatura = texto(p.fatura, 80)
+      if (!fatura.startsWith('in_')) throw new Recusa('Fatura inválida.')
+      const f = await stripe(`invoices/${fatura}`)
+      if (f.customer !== cus) throw new Recusa('Esta fatura não é desta conta.')
+      try {
+        const paga = await stripe(`invoices/${fatura}/pay`, 'POST', {})
+        resultado = { status: paga.status }
+      } catch (e) {
+        // a tentativa conta mesmo quando o cartão recusa: fica no registro com o motivo da recusa
+        await registrar(db, admin, 'stripe_cobrar_de_novo', { id, email: u.email }, motivo, null, { fatura, erro: (e as Error).message })
+        if (sid) await sincronizarAssinatura(db, id, sid)
+        throw e
+      }
+      paraRegistro = { fatura }
+      break
+    }
+    case 'dias_gratis': {
+      const dias = Number(p.dias)
+      if (!Number.isInteger(dias) || dias < 1 || dias > 365) throw new Recusa('Número de dias inválido.')
+      const sub = await stripe(`subscriptions/${assinatura()}`)
+      if (!['active', 'trialing'].includes(sub.status)) throw new Recusa('Só dá para dar dias grátis numa assinatura em dia.')
+      // a próxima cobrança anda N dias a partir de quando ela aconteceria (o período já pago não se perde)
+      const base = Math.max(Math.floor(Date.now() / 1000), sub.trial_end ?? 0, fimDoPeriodo(sub) ?? 0)
+      const novo = base + dias * 86_400
+      await stripe(`subscriptions/${sid}`, 'POST', { trial_end: String(novo), proration_behavior: 'none' })
+      resultado = { proxima_cobranca: iso(novo) }
+      paraRegistro = { dias, proxima_cobranca: iso(novo) }
+      break
+    }
+    case 'reembolsar': {
+      const cobranca = texto(p.cobranca, 80)
+      if (!/^(ch|py)_/.test(cobranca)) throw new Recusa('Cobrança inválida.')
+      const c = await stripe(`charges/${cobranca}`)
+      if (c.customer !== cus) throw new Recusa('Esta cobrança não é desta conta.')
+      const r = await stripe('refunds', 'POST', { charge: cobranca })
+      resultado = { status: r.status, valor: r.amount, moeda: r.currency }
+      paraRegistro = { cobranca, valor: r.amount, moeda: r.currency, status: r.status }
+      break
+    }
+    case 'link_cartao': {
+      // portal do Stripe: a pessoa troca o cartão (e paga a fatura em aberto). O link vale por pouco tempo; não vai para o registro.
+      const s = await stripe('billing_portal/sessions', 'POST', { customer: cus, return_url: SITE })
+      resultado = { link: s.url }
+      break
+    }
+  }
+
+  if (sid && ['cancelar_fim', 'desfazer_cancelamento', 'cancelar_agora', 'cobrar_de_novo', 'dias_gratis'].includes(tipo)) {
+    await sincronizarAssinatura(db, id, sid)
+  }
+  await registrar(db, admin, `stripe_${tipo}`, { id, email: u.email }, motivo, { status: ass?.status }, paraRegistro)
+  return resultado
 }
 
 /** Erros do banco que são recusas (raise exception das funções adm_*) viram mensagem para o painel. */
@@ -208,6 +366,10 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       await registrar(db, admin, 'excluir', { id: u.id, email: u.email }, motivo, { assinatura: ass })
       return { ok: true }
     }
+    case 'stripe':
+      return await lerStripe(db, uuid(p.id))
+    case 'stripe_acao':
+      return await acaoStripe(db, admin, p)
     case 'erros': {
       const { data, error } = await db.rpc('adm_erros', { p_dias: Number(p.dias) || 30 })
       doBanco(error)

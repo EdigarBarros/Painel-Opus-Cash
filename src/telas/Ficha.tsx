@@ -5,6 +5,7 @@ import {
   fmtData, fmtDataHora, fmtDinheiro, haQuanto, hojeISO, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
 } from '../lib/formato'
 import { CampoMotivo, Carregando, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
+import { CartaoStripe } from './Stripe'
 
 interface Assinatura {
   status: string; teste_fim: string | null; periodo_fim: string | null; stripe_customer_id: string | null
@@ -58,7 +59,6 @@ export function Ficha({ id }: { id: string }) {
   const cartao = pagaNoCartao(a?.status)
   const bloqueada = Boolean(f.conta.bloqueado_ate && new Date(f.conta.bloqueado_ate).getTime() > agora)
   const liberadoPeloPainel = a && ['pix', 'cortesia', 'teste'].includes(a.status)
-  const stripe = a?.stripe_customer_id ? `https://dashboard.stripe.com/customers/${a.stripe_customer_id}` : null
 
   return (
     <div className="pagina">
@@ -90,8 +90,8 @@ export function Ficha({ id }: { id: string }) {
           {cartao
             ? (
               <p className="nota">
-                Esta conta paga pelo cartão: o acesso dela é do Stripe. Para mudar, cancele ou ajuste a assinatura lá
-                {stripe && <> (<a href={stripe} target="_blank" rel="noreferrer">abrir no Stripe</a>)</>}.
+                O acesso desta conta vem da assinatura no cartão: mexa nela no quadro do Stripe, logo abaixo. Para passar para
+                Pix, prazo ou vitalício, use "Cancelar agora" lá (dá para já liberar os dias junto).
               </p>
             )
             : (
@@ -101,7 +101,6 @@ export function Ficha({ id }: { id: string }) {
                 {liberadoPeloPainel && <button className="botao perigo-leve" onClick={() => setJanela('revogar')}>Tirar acesso</button>}
               </div>
             )}
-          {!cartao && stripe && <p className="nota"><a href={stripe} target="_blank" rel="noreferrer">Ver cliente no Stripe</a></p>}
         </section>
 
         <section className="cartao">
@@ -126,6 +125,8 @@ export function Ficha({ id }: { id: string }) {
           </div>
         </section>
 
+        {a?.stripe_customer_id && <CartaoStripe id={id} email={f.conta.email} aoMudar={carregar} avisar={avisar} />}
+
         <section className="cartao">
           <h2>Pagamentos</h2>
           {f.pix_stripe.length === 0 && f.pagamentos.length === 0 && <p className="vazio">Nenhum Pix do site nem pagamento por fora.</p>}
@@ -143,7 +144,6 @@ export function Ficha({ id }: { id: string }) {
               </li>
             ))}
           </ul>
-          {cartao && stripe && <p className="nota">Cobranças do cartão: <a href={stripe} target="_blank" rel="noreferrer">no Stripe</a>.</p>}
         </section>
 
         <Anotacoes id={id} anotacoes={f.anotacoes} aoSalvar={() => { avisar('Anotação salva.'); carregar() }} />

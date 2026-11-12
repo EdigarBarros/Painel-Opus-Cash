@@ -26,9 +26,14 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 - **Ficha da conta:**
   - *Acesso:* liberar 15/30/N dias ou até uma data (status `pix`, o mesmo do Pix de 30 dias do site: soma ao que sobrou),
     vitalício (`cortesia`), estender o teste, tirar o acesso. Pode registrar o pagamento recebido (valor, forma, data).
-    Conta que paga no cartão é do Stripe: o painel recusa mexer e mostra o link do cliente no Stripe.
+    Conta que paga no cartão: o acesso vem do Stripe e se mexe pelo quadro do Stripe (abaixo).
   - *Login e senha:* e-mail de senha nova, link de senha nova (para mandar pelo WhatsApp), reenviar ou confirmar o
     e-mail, trocar o e-mail, desconectar de todos os aparelhos, bloquear e desbloquear.
+  - *Stripe (cartão e Pix do site), lido na hora do Stripe:* situação da assinatura, cartão (bandeira e final), próxima
+    cobrança, fatura em aberto com as tentativas e todas as cobranças. Ações: cancelar no fim do período ou agora (com a
+    opção de já liberar dias, para quem passou a pagar por Pix), desfazer cancelamento, tentar cobrar de novo, copiar o
+    link da fatura em aberto, gerar link para trocar o cartão, dar dias grátis no cartão e reembolsar uma cobrança.
+    Depois de cada ação a ficha já mostra o estado novo (o stripe-webhook do OpusCash confirma logo em seguida).
   - Pagamentos, anotações do suporte, erros da conta, histórico do suporte e excluir a conta (cancela o cartão no Stripe).
 - **Erros:** os erros de `erros_app` agrupados pela mensagem, com vezes, pessoas, versões e onde; marcar como resolvido
   (avisa se voltou a acontecer).
@@ -39,7 +44,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 1. **Banco:** rode `supabase/migracoes/01-painel.sql` no SQL Editor (precisa das migrações 12, 16 e 29 do OpusCash).
    Ela já põe `edigarbarros14@gmail.com` como administrador.
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
-   OpusCash já tem (para cancelar a cobrança ao excluir uma conta). Opcional: `PAINEL_ORIGENS` com endereços extras do
+   OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do
    painel, separados por vírgula (localhost, `admin.opuscash.com.br` e `painel-opus-cash*.vercel.app` já valem).
 3. **Site:** projeto na Vercel ligado a este repositório (Vite, `npm run build`, pasta `dist`). Não precisa de variável
    de ambiente. Domínio: `admin.opuscash.com.br`.

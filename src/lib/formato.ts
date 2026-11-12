@@ -86,4 +86,11 @@ export const NOME_DA_ACAO: Record<string, string> = {
   erro_resolver: 'Marcou um erro como resolvido',
   erro_reabrir: 'Reabriu um erro',
   incluir_admin: 'Incluiu um administrador',
+  stripe_cancelar_fim: 'Stripe: cancelou no fim do período',
+  stripe_desfazer_cancelamento: 'Stripe: desfez o cancelamento',
+  stripe_cancelar_agora: 'Stripe: cancelou a assinatura',
+  stripe_cobrar_de_novo: 'Stripe: tentou cobrar de novo',
+  stripe_dias_gratis: 'Stripe: deu dias grátis no cartão',
+  stripe_reembolsar: 'Stripe: reembolsou uma cobrança',
+  stripe_link_cartao: 'Stripe: gerou link para trocar o cartão',
 }

@@ -241,7 +241,7 @@ a.numero:hover { text-decoration: none; border-color: var(--borda-forte); }
 .ficha-topo { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .ficha-email { word-break: break-all; }
 .ficha-topo .sub { color: var(--texto-2); margin: 0; }
-.grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .dados { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
 .dados dt { color: var(--texto-3); }
 .dados dd { margin: 0; }

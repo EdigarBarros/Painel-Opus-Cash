@@ -80,8 +80,10 @@ export function Ficha({ id }: { id: string }) {
           <h2>Acesso ao OpusCash</h2>
           <dl className="dados">
             <dt>Situação</dt><dd>{s.texto}</dd>
-            {a?.teste_fim && <><dt>Teste grátis</dt><dd>{new Date(a.teste_fim).getTime() > agora ? 'vai' : 'foi'} até {fmtDataHora(a.teste_fim)}</dd></>}
-            {a?.periodo_fim && <><dt>{a.status === 'pix' ? 'Liberado até' : 'Período pago até'}</dt><dd>{fmtDataHora(a.periodo_fim)}</dd></>}
+            {a?.status === 'teste' && a.teste_fim && <><dt>Teste grátis</dt><dd>{new Date(a.teste_fim).getTime() > agora ? 'vai' : 'foi'} até {fmtDataHora(a.teste_fim)}</dd></>}
+            {a?.status === 'pix' && a.periodo_fim && <><dt>{new Date(a.periodo_fim).getTime() > agora ? 'Liberado até' : 'Venceu em'}</dt><dd>{fmtDataHora(a.periodo_fim)}</dd></>}
+            {cartao && a?.periodo_fim && <><dt>Período pago até</dt><dd>{fmtDataHora(a.periodo_fim)}</dd></>}
+            {a && !['teste', 'sem_assinatura'].includes(a.status) && a.teste_fim && <><dt>Já usou o teste</dt><dd>até {fmtData(a.teste_fim)}</dd></>}
             {a?.cancela_no_fim && <><dt>Cartão</dt><dd>cancela no fim do período</dd></>}
             {f.perfil?.moeda && <><dt>Moeda</dt><dd>{f.perfil.moeda}</dd></>}
           </dl>

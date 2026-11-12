@@ -9,6 +9,9 @@ import { Erros } from './telas/Erros'
 import { Ficha } from './telas/Ficha'
 import { Inicio } from './telas/Inicio'
 import { Registro } from './telas/Registro'
+import { Conta } from './pecas/Conta'
+import { Icone } from './pecas/Icone'
+import { Marca } from './pecas/Marca'
 import { Carregando, ErroNaTela } from './ui'
 
 const PARADO_MAX = 30 * 60_000
@@ -105,31 +108,51 @@ export default function App() {
   return <Painel email={eu.email} aoSair={sair} />
 }
 
+const SECOES = [
+  { id: 'inicio', nome: 'Início', href: '#/', icone: 'inicio' },
+  { id: 'contas', nome: 'Contas', href: '#/contas', icone: 'pessoas' },
+  { id: 'erros', nome: 'Erros', href: '#/erros', icone: 'inseto' },
+  { id: 'registro', nome: 'Registro', href: '#/registro', icone: 'historico' },
+] as const
+
 function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
   const { partes, params } = useRota()
   const secao = partes[0] ?? 'inicio'
-  const itens = [['inicio', 'Início', '#/'], ['contas', 'Contas', '#/contas'], ['erros', 'Erros', '#/erros'], ['registro', 'Registro', '#/registro']] as const
   return (
-    <div className="casca">
-      <header className="topo">
-        <a href="#/" className="marca"><img src="/simbolo.webp" alt="" width={28} height={28} /><span>Painel <strong>OpusCash</strong></span></a>
-        <nav className="menu" aria-label="Seções">
-          {itens.map(([id, nome, href]) => (
-            <a key={id} href={href} className={secao === id ? 'ativo' : ''} aria-current={secao === id ? 'page' : undefined}>{nome}</a>
+    <div className="app">
+      <aside className="lateral">
+        <a href="#/" className="lateral-marca" aria-label="Início do painel"><Marca /></a>
+        <nav aria-label="Seções">
+          {SECOES.map((s) => (
+            <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
+              <Icone nome={s.icone} />{s.nome}
+            </a>
           ))}
         </nav>
-        <div className="quem">
-          <span className="quem-email">{email}</span>
-          <button className="botao pequeno" onClick={aoSair}>Sair</button>
+        <div className="lateral-rodape">
+          <Conta email={email} aoSair={aoSair} lado="cima" />
         </div>
-      </header>
-      <main className="conteudo">
-        {secao === 'contas' && partes[1] ? <Ficha key={partes[1]} id={partes[1]} />
-          : secao === 'contas' ? <Contas filtroInicial={params.get('filtro')} />
-          : secao === 'erros' ? <Erros />
-          : secao === 'registro' ? <Registro />
-          : <Inicio />}
-      </main>
+      </aside>
+      <div className="principal">
+        <header className="barra-movel">
+          <a href="#/" aria-label="Início do painel"><Marca /></a>
+          <Conta email={email} aoSair={aoSair} lado="baixo" compacta />
+        </header>
+        <main className="conteudo">
+          {secao === 'contas' && partes[1] ? <Ficha key={partes[1]} id={partes[1]} />
+            : secao === 'contas' ? <Contas key={params.toString()} filtroInicial={params.get('filtro')} buscaInicial={params.get('busca')} />
+            : secao === 'erros' ? <Erros />
+            : secao === 'registro' ? <Registro />
+            : <Inicio />}
+        </main>
+      </div>
+      <nav className="abas-movel" aria-label="Seções">
+        {SECOES.map((s) => (
+          <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
+            <Icone nome={s.icone} tamanho={22} /><span>{s.nome}</span>
+          </a>
+        ))}
+      </nav>
     </div>
   )
 }

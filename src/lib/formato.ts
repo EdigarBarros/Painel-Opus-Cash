@@ -94,3 +94,15 @@ export const NOME_DA_ACAO: Record<string, string> = {
   stripe_reembolsar: 'Stripe: reembolsou uma cobrança',
   stripe_link_cartao: 'Stripe: gerou link para trocar o cartão',
 }
+
+/** Duas letras para o avatar: "Maria Souza" → "MS"; "joao.silva@x.com" → "JS"; "ana@x.com" → "AN". */
+export function iniciais(texto: string) {
+  const base = texto.includes('@') ? texto.split('@')[0] : texto
+  const partes = base.split(/[\s._-]+/).map((p) => p.replace(/[^\p{L}]/gu, '')).filter(Boolean)
+  if (partes.length >= 2) return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+  return (partes[0] ?? '?').slice(0, 2).toUpperCase()
+}
+
+const fmtInteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
+/** 1234 → "1.234" (arredondado). */
+export const inteiro = (n: number) => fmtInteiro.format(Math.round(n))

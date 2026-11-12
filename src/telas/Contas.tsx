@@ -36,9 +36,9 @@ function passa(c: ContaResumo, f: Filtro) {
   }
 }
 
-export function Contas({ filtroInicial }: { filtroInicial?: string | null }) {
-  const [termo, setTermo] = useState('')
-  const [buscado, setBuscado] = useState('')
+export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string | null; buscaInicial?: string | null }) {
+  const [termo, setTermo] = useState(buscaInicial ?? '')
+  const [buscado, setBuscado] = useState((buscaInicial ?? '').trim())
   const [contas, setContas] = useState<ContaResumo[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>(FILTROS.some((f) => f.id === filtroInicial) ? filtroInicial as Filtro : 'todos')

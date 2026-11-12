@@ -20,8 +20,14 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 
 ## O que cada tela faz
 
-- **Início:** contas, quem entrou na semana, testes que vencem, assinantes no cartão, liberados por prazo, vitalícios,
-  dinheiro recebido em 30 dias (Pix do site + pagamentos por fora) e cadastros por dia.
+- **Início:** saudação, busca rápida de conta e atualização sozinha a cada 5 minutos. Quatro números com variação contra
+  o período anterior e minigráfico (contas, pagando agora, recebido em 30 dias, erros na semana); gráfico de movimento
+  (cadastros, dinheiro recebido ou erros, em 30 ou 90 dias); rosca de como as contas estão divididas; quem pede atenção
+  (cartão recusado, prazo ou teste vencendo em 7 dias); últimos cadastros; uso (entraram na semana e no mês, e-mail não
+  confirmado, bloqueadas) e as últimas ações do suporte.
+- **Visual:** o mesmo do OpusCash (cores, fontes Inter/Sora/Montserrat servidas pelo próprio painel, ícones, número que
+  conta). Barra lateral no computador e abas embaixo no celular. A conta fica no pé da lateral, com a aparência
+  (escuro, claro ou automático, guardada só neste navegador) e o botão de sair.
 - **Contas:** busca por e-mail ou nome, filtros (em teste, vence em 7 dias, cartão, liberados, sem acesso, com problema).
 - **Ficha da conta:**
   - *Acesso:* liberar 15/30/N dias ou até uma data (status `pix`, o mesmo do Pix de 30 dias do site: soma ao que sobrou),
@@ -43,6 +49,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 
 1. **Banco:** rode `supabase/migracoes/01-painel.sql` no SQL Editor (precisa das migrações 12, 16 e 29 do OpusCash).
    Ela já põe `edigarbarros14@gmail.com` como administrador.
+   Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início).
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
    OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do
    painel, separados por vírgula (localhost, `admin.opuscash.com.br` e `painel-opus-cash*.vercel.app` já valem).

@@ -85,4 +85,5 @@ export const NOME_DA_ACAO: Record<string, string> = {
   excluir: 'Excluiu a conta',
   erro_resolver: 'Marcou um erro como resolvido',
   erro_reabrir: 'Reabriu um erro',
+  incluir_admin: 'Incluiu um administrador',
 }

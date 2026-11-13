@@ -327,6 +327,54 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const online = Boolean(presenca?.aberto && Date.now() - new Date(presenca.visto_em).getTime() < 150_000)
       return { ...data, foto: typeof foto === 'string' ? foto : null, presenca: presenca ? { ...presenca, online } : null }
     }
+    // ---------- suporte: pedidos de ajuda que as pessoas abrem no OpusCash (migração 32 do OpusCash, 05 do painel) ----------
+    case 'suporte_contagem': {
+      const { data, error } = await db.rpc('adm_suporte_contagem')
+      doBanco(error)
+      return data
+    }
+    case 'suporte_lista': {
+      const filtro = ['aguardando', 'respondido', 'resolvido', 'todos'].includes(String(p.filtro)) ? String(p.filtro) : 'aguardando'
+      const categoria = ['pagamento', 'bug', 'conta', 'duvida', 'sugestao', 'outro'].includes(String(p.categoria)) ? String(p.categoria) : null
+      const { data, error } = await db.rpc('adm_suporte_lista', {
+        p_filtro: filtro, p_categoria: categoria, p_termo: texto(p.termo, 120) || null, p_user: p.user ? uuid(p.user) : null, p_limite: 200,
+      })
+      doBanco(error)
+      return data
+    }
+    case 'suporte_ticket': {
+      // abrir a conversa marca como lida pelo suporte; fica no registro como ler uma ficha
+      const id = uuid(p.id)
+      const { data, error } = await db.rpc('adm_suporte_ticket', { p_id: id })
+      doBanco(error)
+      if (!data?.ticket) throw new Recusa('Pedido não encontrado.', 404)
+      await registrar(db, admin, 'suporte_ver', { id: data.conta?.id, email: data.conta?.email }, null, null, { ticket: id })
+      return data
+    }
+    case 'suporte_responder': {
+      // a própria resposta é o motivo: fica inteira no registro
+      const id = uuid(p.id)
+      const resposta = texto(p.texto, 4000)
+      if (!resposta) throw new Recusa('Escreva a resposta.')
+      const resolver = p.resolver === true
+      const { data, error } = await db.rpc('adm_suporte_responder', { p_admin: admin.id, p_ticket: id, p_texto: resposta, p_resolver: resolver })
+      doBanco(error)
+      const u = await contaAlvo(db, data.user_id)
+      await registrar(db, admin, resolver ? 'suporte_responder_resolver' : 'suporte_responder', { id: u.id, email: u.email }, null, null,
+        { ticket: id, resposta })
+      return { ok: true }
+    }
+    case 'suporte_status': {
+      const id = uuid(p.id)
+      const status = p.status === 'aberto' ? 'aberto' : 'resolvido'
+      const motivo = motivoObrigatorio(p.motivo)
+      const { data, error } = await db.rpc('adm_suporte_status', { p_ticket: id, p_status: status })
+      doBanco(error)
+      const u = await contaAlvo(db, data.user_id)
+      await registrar(db, admin, status === 'aberto' ? 'suporte_reabrir' : 'suporte_resolver', { id: u.id, email: u.email }, motivo,
+        { status: data.antes }, { ticket: id, status })
+      return { ok: true }
+    }
     case 'uso': {
       // como a pessoa usa o app: presença, telas, tempo, tutorial e QUANTAS coisas cadastrou (nunca o conteúdo).
       // Só leitura; abrir a ficha já fica no registro.
@@ -524,7 +572,8 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
     case 'registro': {
       let q = db.from('adm_registro').select('id, admin_email, acao, alvo_id, alvo_email, motivo, criado_em')
         .order('criado_em', { ascending: false }).limit(200)
-      if (p.sem_leituras !== false) q = q.neq('acao', 'ver_ficha')
+      // abrir ficha e abrir pedido de suporte são leituras: só aparecem quando pedidas
+      if (p.sem_leituras !== false) q = q.not('acao', 'in', '(ver_ficha,suporte_ver)')
       const { data, error } = await q
       doBanco(error)
       return data

@@ -45,6 +45,12 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
   pede versão nova do site nem do app (no app Android, vale a partir da 2.5.0).
 - **Reembolsos:** o Início lista os reembolsos feitos no Stripe (pelo painel ou direto no Stripe, cartão e Pix), com a conta
   de cada um; na aba Cartão e Stripe da ficha, cada cobrança mostra os reembolsos dela (valor, data e motivo).
+- **Suporte:** os pedidos de ajuda que as pessoas abrem no OpusCash (botão de conversa em qualquer tela do app; migração 32 do OpusCash + `05-suporte.sql`).
+  Números da fila (esperando o suporte, esperando a pessoa, resolvidos na semana, tempo típico da primeira resposta), filtro por situação e por
+  assunto (pagamento, algo não funciona, conta, dúvida, sugestão, outro), busca por e-mail, nome ou assunto. A conversa mostra a pessoa (com a
+  situação do acesso e o link para a ficha), de onde ela pediu (tela, aparelho, versão, idioma), se ela já viu a resposta, respostas prontas,
+  "Responder", "Responder e resolver", "Resolver sem responder" e "Reabrir" (com motivo). Atualiza sozinha (fila a cada 30 s, conversa a cada
+  15 s) e o menu mostra quantos esperam resposta. A ficha da pessoa lista os pedidos dela. Abrir, responder e mudar a situação ficam no registro.
 - **Contas:** busca por e-mail ou nome (atalho `/`), filtros com contagem (em teste, vence em 7 dias, cartão, liberados,
   vitalícios, sem acesso, com problema), ordem (mais novas, último acesso, vence primeiro, nome) e vista em lista ou
   cartões. Cada conta mostra a situação, quantos dias faltam e se entrou hoje (bolinha verde) ou na semana (amarela).
@@ -76,6 +82,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    Ela já põe `edigarbarros14@gmail.com` como administrador.
    Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início) e, com a migração 30 do OpusCash já rodada,
    `supabase/migracoes/03-uso.sql` (uso do app, foto e quem está online). Rodou a 01 de novo? Rode a 03 depois dela.
+   Para o suporte: a migração 32 do OpusCash e depois `supabase/migracoes/05-suporte.sql`.
    Com a migração 31 do OpusCash rodada, `supabase/migracoes/04-novidades.sql` (tela Novidades).
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
    OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do

@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
 import { api, mensagemDe, ouvirPerdaDeAcesso } from './lib/api'
-import { esquecerTudo } from './lib/dados'
+import { esquecerTudo, useDados } from './lib/dados'
 import { entrarNaTela, esquecerVisitas } from './lib/visitas'
 import { supabase } from './lib/supabase'
 import { estiloLente, useLente } from './lib/useLente'
@@ -13,6 +13,8 @@ import { Erros } from './telas/Erros'
 import { Ficha } from './telas/Ficha'
 import { Inicio } from './telas/Inicio'
 import { Registro } from './telas/Registro'
+import type { Contagem } from './lib/suporte'
+import { Suporte } from './telas/Suporte'
 import { Conta } from './pecas/Conta'
 import { Icone } from './pecas/Icone'
 import { Marca } from './pecas/Marca'
@@ -115,6 +117,7 @@ export default function App() {
 const SECOES = [
   { id: 'inicio', nome: 'Início', href: '#/', icone: 'inicio' },
   { id: 'contas', nome: 'Contas', href: '#/contas', icone: 'pessoas' },
+  { id: 'suporte', nome: 'Suporte', href: '#/suporte', icone: 'conversa' },
   { id: 'novidades', nome: 'Novidades', href: '#/novidades', icone: 'estrela' },
   { id: 'erros', nome: 'Erros', href: '#/erros', icone: 'inseto' },
   { id: 'registro', nome: 'Registro', href: '#/registro', icone: 'historico' },
@@ -128,6 +131,14 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
   // tela atual (a ficha de cada conta conta como uma tela): primeira visita = abertura completa; volta = entrada leve
   const tela = secao === 'contas' && partes[1] ? `ficha:${partes[1]}` : secao
   const entrada = entrarNaTela(tela) ? 'completa' : 'leve'
+  // o que espera resposta no suporte: número no menu, conferido a cada minuto e quando o suporte responde
+  const { dados: contagem, recarregar: recontar } = useDados('suporte-contagem', () => api<Contagem>('suporte_contagem'))
+  useEffect(() => {
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') recontar() }, 60_000)
+    window.addEventListener('suporte-mudou', recontar)
+    return () => { window.clearInterval(t); window.removeEventListener('suporte-mudou', recontar) }
+  }, [recontar])
+  const esperando = contagem?.aguardando ?? 0
   const lenteNav = useLente(refNav, 'a.ativo', secao)
   const lenteAbas = useLente(refAbas, 'a.ativo', secao)
   return (
@@ -139,6 +150,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
           {SECOES.map((s) => (
             <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
               <Icone nome={s.icone} />{s.nome}
+              {s.id === 'suporte' && esperando > 0 && <b className="nav-contador" title={`${esperando} esperando resposta`}>{esperando}</b>}
             </a>
           ))}
         </nav>
@@ -154,6 +166,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
         <main className="conteudo" data-entrada={entrada}>
           {secao === 'contas' && partes[1] ? <Ficha key={partes[1]} id={partes[1]} />
             : secao === 'contas' ? <Contas key={params.toString()} filtroInicial={params.get('filtro')} buscaInicial={params.get('busca')} />
+            : secao === 'suporte' ? <Suporte idAberto={partes[1]} buscaInicial={params.get('busca')} key={params.get('busca') ?? ''} />
             : secao === 'novidades' ? <Novidades />
             : secao === 'erros' ? <Erros />
             : secao === 'registro' ? <Registro />
@@ -165,6 +178,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
         {SECOES.map((s) => (
           <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
             <Icone nome={s.icone} tamanho={22} /><span>{s.nome}</span>
+            {s.id === 'suporte' && esperando > 0 && <b className="nav-contador">{esperando}</b>}
           </a>
         ))}
       </nav>

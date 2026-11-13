@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { api, mensagemDe } from '../lib/api'
 import { useDados, useDemorou } from '../lib/dados'
+import { CATEGORIAS as CATEGORIAS_SUPORTE } from '../lib/suporte'
 import { useAviso } from '../lib/useAviso'
 import {
   corDoTom, fmtData, fmtDataHora, fmtDinheiro, haQuanto, nomeDaTela, hojeISO, ICONE_DA_ACAO, iniciais, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
@@ -10,6 +11,7 @@ import { Icone } from '../pecas/Icone'
 import { Numero } from '../pecas/Numero'
 import { CampoMotivo, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
 import { CartaoStripe } from './Stripe'
+
 import { UsoDaConta } from './Uso'
 
 interface Assinatura {
@@ -260,6 +262,37 @@ function Pagamentos({ f }: { f: FichaDados }) {
   )
 }
 
+/** Os pedidos de suporte desta pessoa (migração 32 do OpusCash), com link para a conversa. */
+function PedidosDaPessoa({ id }: { id: string }) {
+  const { dados, erro } = useDados(`suporte-da-pessoa:${id}`, () => api<{ id: string; categoria: keyof typeof CATEGORIAS_SUPORTE; assunto: string; status: 'aberto' | 'respondido' | 'resolvido'; ultima_mensagem_em: string; nao_lido: boolean; mensagens: number }[]>('suporte_lista', { filtro: 'todos', user: id }))
+  if (erro && !dados) return null
+  return (
+    <section className="cartao">
+      <header className="cartao-topo"><h2><Icone nome="conversa" tamanho={18} />Pedidos de suporte</h2>{dados && dados.length > 0 && <a className="ver-mais pequeno" href="#/suporte">Abrir o suporte<Icone nome="seta" tamanho={16} /></a>}</header>
+      {!dados ? <div className="esqueleto" style={{ height: 70 }} /> : dados.length === 0
+        ? <p className="vazio-bonito"><Icone nome="check" tamanho={20} />Esta pessoa nunca pediu ajuda pelo app.</p>
+        : (
+          <ul className="lista-movimentos">
+            {dados.map((t, i) => {
+              const c = CATEGORIAS_SUPORTE[t.categoria]
+              return (
+                <li key={t.id} style={{ '--i': Math.min(i, 12), '--c': c.cor } as React.CSSProperties}>
+                  <a href={`#/suporte/${t.id}`} className="mov-link">
+                    <span className="mov-icone"><Icone nome={c.icone} tamanho={17} /></span>
+                    <span className="mov-texto"><b>{t.assunto}</b><small>{c.nome} · {t.mensagens === 1 ? '1 mensagem' : `${t.mensagens} mensagens`} · {haQuanto(t.ultima_mensagem_em)}</small></span>
+                    <Etiqueta tom={t.status === 'aberto' ? 'amarelo' : t.status === 'respondido' ? 'azul' : 'verde'}>
+                      {t.status === 'aberto' ? 'Esperando o suporte' : t.status === 'respondido' ? 'Esperando a pessoa' : 'Resolvido'}
+                    </Etiqueta>
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+    </section>
+  )
+}
+
 function Historico({ registro }: { registro: FichaDados['registro'] }) {
   return (
     <section className="cartao">
@@ -419,6 +452,7 @@ export function Ficha({ id }: { id: string }) {
         )}
         {aba === 'cartao' && temStripe && <CartaoStripe id={id} email={f.conta.email} aoMudar={carregar} avisar={avisar} />}
         {aba === 'pagamentos' && <Pagamentos f={f} />}
+        {aba === 'suporte' && <PedidosDaPessoa id={id} />}
         {aba === 'suporte' && (
           <div className="grade-ficha">
             <Anotacoes id={id} anotacoes={f.anotacoes} aoSalvar={() => { avisar('Anotação salva.'); carregar() }} />

@@ -10,7 +10,6 @@ const MAXIMO = 5
 
 export function iniciarIma() {
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
-  if (semMovimento()) return
   let quadro = 0
   let ultimo: PointerEvent | null = null
   let atual: HTMLElement | null = null
@@ -28,6 +27,7 @@ export function iniciarIma() {
       quadro = 0
       const ev = ultimo
       if (!ev) return
+      if (semMovimento()) { soltar(atual); atual = null; return }
       const el = (ev.target as Element | null)?.closest<HTMLElement>(ALVOS) ?? null
       if (el !== atual) { soltar(atual); atual = el }
       if (!el) return

@@ -1,5 +1,4 @@
-/* =========================================================================
-   Painel OpusCash — o mesmo visual do OpusCash (src/index.css do site):
+/* ==================================================================   Painel OpusCash — o mesmo visual do OpusCash (src/index.css do site):
    superfícies sólidas com borda fina, o gradiente índigo → azul → verde-água
    do símbolo como destaque e vidro fosco só no que flutua.
    O tema vem de data-tema no <html> (public/tema.js e src/lib/tema.ts).
@@ -422,8 +421,8 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
   background: conic-gradient(var(--c), color-mix(in srgb, var(--c) 30%, transparent), var(--c)); }
 .avatar-anel .avatar { width: 40px; height: 40px; border: 2px solid var(--superficie); background: color-mix(in srgb, var(--c) 22%, var(--superficie-2)); }
 .presenca { position: absolute; right: -1px; bottom: -1px; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid var(--superficie); background: var(--cinza-grafico); }
-.presenca.hoje { background: var(--entrada); }
-.presenca.hoje::after { content: ''; position: absolute; inset: -2.5px; border-radius: 50%; border: 2px solid var(--entrada); animation: pulso 2.4s ease-out infinite; }
+.presenca.hoje, .presenca.agora { background: var(--entrada); }
+.presenca.agora::after { content: ''; position: absolute; inset: -2.5px; border-radius: 50%; border: 2px solid var(--entrada); animation: pulso 2.4s ease-out infinite; }
 .presenca.semana { background: var(--divida); }
 @keyframes pulso { from { transform: scale(.8); opacity: .9; } 70%, to { transform: scale(2.1); opacity: 0; } }
 .conta-ident { display: grid; min-width: 0; }
@@ -1200,3 +1199,58 @@ a.medidor:hover { background: var(--preench-4); text-decoration: none; }
 .placar a:not(.tem) svg { color: var(--entrada); }
 .linha-do-tempo .calmo.pouco { padding: 18px 0 0; min-height: 0; }
 .linha-do-tempo .calmo.pouco::before { display: none; }
+/* ---------- Uso do app (aba da ficha e Início) ---------- */
+.avatar img, .avatar-heroi img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.avatar:has(img), .avatar-heroi.com-foto { overflow: hidden; padding: 0; }
+.nota-topo { font-size: 12.5px; color: var(--texto-3); }
+.uso-rotulo { margin: 14px 0 8px; font-size: 12.5px; font-weight: 600; color: var(--texto-3); }
+
+.ao-vivo { --c: var(--cinza-grafico); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+  border-color: color-mix(in srgb, var(--c) 30%, var(--borda)); }
+.ao-vivo.online { --c: var(--entrada); background: linear-gradient(110deg, color-mix(in srgb, var(--entrada) 12%, transparent), transparent 55%), var(--superficie); }
+.ao-vivo-ponto { position: relative; width: 14px; height: 14px; border-radius: 50%; background: var(--c); }
+.ao-vivo.online .ao-vivo-ponto::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--c); animation: pulso 2s ease-out infinite; }
+.ao-vivo-textos { display: grid; gap: 3px; min-width: 0; }
+.ao-vivo-textos strong { font-size: 16px; }
+.ao-vivo-textos span { font-size: 13.5px; color: var(--texto-2); }
+.ao-vivo-dados { display: flex; gap: 18px; margin: 0; }
+.ao-vivo-dados dt { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--texto-3); font-weight: 600; }
+.ao-vivo-dados dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+@media (max-width: 760px) {
+  .ao-vivo { grid-template-columns: auto 1fr; }
+  .ao-vivo-dados { grid-column: 1 / -1; flex-wrap: wrap; }
+}
+
+.preenchido { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.preenchido li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--borda);
+  background: var(--superficie-2); animation: surgir-sem-desfoque .5s var(--mola) backwards; animation-delay: calc(var(--i) * 30ms); }
+.preenchido li.zero { opacity: .55; }
+.preenchido-texto { display: grid; min-width: 0; flex: 1; }
+.preenchido-texto b { font-size: 13.5px; font-weight: 600; }
+.preenchido-texto small { font-size: 11.5px; color: var(--texto-3); }
+.preenchido strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.uso-telas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.uso-telas li { display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr auto; align-items: center; gap: 14px;
+  animation: surgir-sem-desfoque .5s var(--mola) backwards; animation-delay: calc(var(--i) * 30ms); }
+.uso-tela-nome { display: grid; min-width: 0; }
+.uso-tela-nome b { font-size: 14px; font-weight: 600; }
+.uso-tela-nome small { font-size: 12px; color: var(--texto-3); }
+.uso-tela-barra { height: 10px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; }
+.uso-tela-barra i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--caixa), var(--marca-2, var(--caixa))); }
+.uso-telas strong { font-size: 14px; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+@media (max-width: 640px) {
+  .uso-telas li { grid-template-columns: 1fr auto; }
+  .uso-tela-barra { grid-column: 1 / -1; grid-row: 2; }
+}
+
+.online-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.online-lista a { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 14px; color: inherit; text-decoration: none; }
+.online-lista a:hover { background: var(--superficie-2); }
+.online-lista .avatar-anel { width: 40px; height: 40px; --c: var(--entrada); }
+.online-lista .avatar-anel .avatar { width: 36px; height: 36px; }
+.online-texto { display: grid; min-width: 0; flex: 1; }
+.online-texto b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.online-texto small { font-size: 12.5px; color: var(--texto-3); }
+.reembolso-valor { color: var(--saida); }
+.mov-link { display: contents; color: inherit; text-decoration: none; }

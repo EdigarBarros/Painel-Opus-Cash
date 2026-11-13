@@ -16,7 +16,8 @@ interface DadosStripe {
   faturas?: { id: string; numero: string | null; status: string; valor: number; pago: number; moeda: string; criada: string | null
     link: string | null; tentativas: number; proxima_tentativa: string | null }[]
   cobrancas?: { id: string; valor: number; reembolsado: number; moeda: string; status: string; criada: string | null
-    tipo: string | null; final: string | null; bandeira: string | null; falha: string | null; recibo: string | null; descricao: string | null }[]
+    tipo: string | null; final: string | null; bandeira: string | null; falha: string | null; recibo: string | null; descricao: string | null
+    reembolsos?: { id: string; valor: number; moeda: string; status: string; criado: string | null; motivo: string | null }[] }[]
 }
 
 const SITUACAO: Record<string, [string, 'verde' | 'azul' | 'amarelo' | 'vermelho' | 'cinza']> = {
@@ -178,6 +179,13 @@ export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email
                           {fmtDataHora(c.criada)} · {c.status === 'failed' ? `Recusada${c.falha ? `: ${c.falha}` : ''}` : c.status === 'pending' ? 'Aguardando' : total ? 'Reembolsada' : c.reembolsado > 0 ? `Paga, ${fmtDinheiro(c.reembolsado, c.moeda)} reembolsado` : 'Paga'}
                           {c.recibo && <> · <a href={c.recibo} target="_blank" rel="noreferrer">recibo</a></>}
                         </small>
+                        {(c.reembolsos ?? []).map((r) => (
+                          <small key={r.id} className="reembolso-valor">
+                            ↩ Reembolso de {fmtDinheiro(r.valor, r.moeda)} em {fmtDataHora(r.criado)}
+                            {r.motivo === 'requested_by_customer' ? ' · pedido da pessoa' : r.motivo === 'duplicate' ? ' · duplicada' : r.motivo === 'fraudulent' ? ' · fraude' : ''}
+                            {r.status === 'pending' ? ' · processando' : r.status === 'failed' ? ' · falhou' : ''}
+                          </small>
+                        ))}
                       </span>
                       <strong className="mov-valor">{fmtDinheiro(c.valor, c.moeda)}</strong>
                       {c.status === 'succeeded' && !total && (

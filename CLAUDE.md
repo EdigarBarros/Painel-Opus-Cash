@@ -4,7 +4,9 @@
 - **Nada de poder no navegador.** Toda leitura ou mudança passa pela função `supabase/functions/admin`, que confere
   administrador + código do celular (`aal2`) e grava em `adm_registro`. Ação nova = um `case` lá + registro + motivo
   obrigatório quando muda algo.
-- **Não leia finanças das pessoas** (lançamentos, dívidas, metas, invest...). Só conta, perfil, assinatura, pagamentos e erros.
+- **Não leia finanças das pessoas** (lançamentos, dívidas, metas, invest...). Só conta, perfil, assinatura, pagamentos, erros e
+  uso do app (`uso_*`). Das finanças, no máximo a **contagem** (quantos lançamentos, quantas metas: `adm_contagens`), nunca
+  valores, descrições ou nomes.
 - Acesso por prazo usa o status `pix` (com `periodo_fim`) e vitalício usa `cortesia`: o site, o app Android e o webhook do
   Stripe do OpusCash já entendem os dois. Não invente status novo sem mudar o OpusCash junto (e o app Android).
 - Mudanças no banco: arquivo novo em `supabase/migracoes/` (rodável de novo), aplicado no Supabase. Funções `adm_*` só

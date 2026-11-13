@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { useDados, useDemorou } from '../lib/dados'
-import { corDoTom, fmtData, haQuanto, iniciais, situacao } from '../lib/formato'
+import { corDoTom, fmtData, haQuanto, iniciais, nomeDaTela, situacao } from '../lib/formato'
 import { estiloLente, useLente } from '../lib/useLente'
 import { Icone } from '../pecas/Icone'
 import { Segmentado } from '../pecas/Segmentado'
@@ -10,10 +10,13 @@ import { ErroNaTela, Etiqueta } from '../ui'
 export interface ContaResumo {
   id: string; email: string; nome: string | null; criado_em: string; ultimo_acesso: string | null
   confirmado: boolean; bloqueado: boolean; status: string; teste_fim: string | null; periodo_fim: string | null
+  /** migração 03 do painel: foto de perfil, se está com o app aberto agora e em qual tela */
+  foto?: string | null; online?: boolean; visto_em?: string | null; tela?: string | null
 }
 
 const FILTROS = [
   { id: 'todos', nome: 'Todas', cor: 'var(--texto-2)' },
+  { id: 'online', nome: 'Usando agora', cor: 'var(--entrada)' },
   { id: 'teste', nome: 'Em teste', cor: 'var(--indigo)' },
   { id: 'teste_vence', nome: 'Teste vence em 7 dias', cor: 'var(--caixa)' },
   { id: 'pagantes', nome: 'Cartão', cor: 'var(--entrada)' },
@@ -32,6 +35,7 @@ function passa(c: ContaResumo, f: Filtro) {
   const emTeste = c.status === 'teste' && vale(c.teste_fim)
   const liberado = c.status === 'pix' && vale(c.periodo_fim)
   switch (f) {
+    case 'online': return Boolean(c.online)
     case 'teste': return emTeste
     case 'teste_vence': return emTeste && new Date(c.teste_fim!).getTime() < Date.now() + 7 * DIA
     case 'pagantes': return ['trialing', 'active', 'past_due'].includes(c.status)
@@ -50,8 +54,9 @@ function fimDoAcesso(c: ContaResumo) {
   return null
 }
 
-/** Bolinha de presença: verde entrou hoje, amarela na semana, apagada faz tempo. */
-function presenca(iso: string | null) {
+/** Bolinha de presença: verde pulsando usando agora, verde entrou hoje, amarela na semana, apagada faz tempo. */
+function presenca(iso: string | null, online?: boolean) {
+  if (online) return 'agora'
   if (!iso) return 'nunca'
   const h = (Date.now() - new Date(iso).getTime()) / 3_600_000
   return h < 24 ? 'hoje' : h < 24 * 7 ? 'semana' : 'antes'
@@ -74,10 +79,10 @@ function Prazo({ fim }: { fim: string }) {
 function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }) {
   const s = situacao(c.status, c.teste_fim, c.periodo_fim)
   const fim = fimDoAcesso(c)
-  const p = presenca(c.ultimo_acesso)
+  const p = presenca(c.ultimo_acesso, c.online)
   return (
     <a href={`#/contas/${c.id}`} className={vista === 'lista' ? 'linha-conta' : 'cartao-conta'} style={{ '--c': corDoTom(s.tom), '--i': Math.min(i, 14) } as React.CSSProperties}>
-      <span className="avatar-anel"><span className="avatar">{iniciais(c.nome || c.email)}</span><i className={`presenca ${p}`} title={`Último acesso: ${haQuanto(c.ultimo_acesso)}`} /></span>
+      <span className="avatar-anel"><span className="avatar">{c.foto ? <img src={c.foto} alt="" loading="lazy" /> : iniciais(c.nome || c.email)}</span><i className={`presenca ${p}`} title={c.online ? `Usando agora${c.tela ? `: ${nomeDaTela(c.tela)}` : ''}` : `Último acesso: ${haQuanto(c.ultimo_acesso)}`} /></span>
       <span className="conta-ident">
         <span className="conta-titulo">{c.nome || c.email}</span>
         <span className="conta-sub">{c.nome ? c.email : `Chegou ${haQuanto(c.criado_em)}`}</span>
@@ -85,6 +90,7 @@ function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }
       <span className="conta-situacao">
         <span className="etiquetas">
           <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
+          {c.online && <Etiqueta tom="verde">Usando agora{c.tela ? ` · ${nomeDaTela(c.tela)}` : ''}</Etiqueta>}
           {c.bloqueado && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
           {!c.confirmado && <Etiqueta tom="amarelo">E-mail não confirmado</Etiqueta>}
         </span>
@@ -92,7 +98,7 @@ function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }
       </span>
       <span className="conta-datas">
         <span><Icone nome="calendario" tamanho={14} />{fmtData(c.criado_em)}</span>
-        <span><Icone nome="relogio" tamanho={14} />{haQuanto(c.ultimo_acesso)}</span>
+        <span><Icone nome="relogio" tamanho={14} />{c.online ? 'agora' : haQuanto(c.ultimo_acesso)}</span>
       </span>
       <span className="conta-seta"><Icone nome="dir" tamanho={18} /></span>
     </a>
@@ -102,7 +108,7 @@ function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }
 export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string | null; buscaInicial?: string | null }) {
   const [termo, setTermo] = useState(buscaInicial ?? '')
   const [buscado, setBuscado] = useState((buscaInicial ?? '').trim())
-  const { dados, erro: falhou, buscando, chaveDosDados } = useDados(`buscar:${buscado}`, () => api<ContaResumo[]>('buscar', { termo: buscado }), { manterAnterior: true })
+  const { dados, erro: falhou, buscando, chaveDosDados, recarregar } = useDados(`buscar:${buscado}`, () => api<ContaResumo[]>('buscar', { termo: buscado }), { manterAnterior: true })
   const contas = dados ?? null
   const erro = falhou && !dados ? falhou : null
   const demorou = useDemorou()
@@ -113,6 +119,11 @@ export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string
   const refFiltros = useRef<HTMLDivElement>(null)
   const lente = useLente(refFiltros, 'button.ativo', `${filtro}|${contas?.length ?? 0}`)
 
+  // quem está usando agora muda o tempo todo: a lista se atualiza sozinha a cada 30 segundos (com a aba do painel visível)
+  useEffect(() => {
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') recarregar() }, 30_000)
+    return () => window.clearInterval(t)
+  }, [recarregar])
   // busca no servidor 300 ms depois de parar de digitar
   useEffect(() => {
     const t = window.setTimeout(() => setBuscado(termo.trim()), 300)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { iniciais } from '../lib/formato'
 import { definirTema, useTema, type Preferencia } from '../lib/tema'
 import { Icone } from './Icone'
+import { Segmentado } from './Segmentado'
 
 const TEMAS: [Preferencia, string, string][] = [['escuro', 'Escuro', 'lua'], ['claro', 'Claro', 'sol'], ['sistema', 'Automático', 'ajustes']]
 
@@ -16,6 +17,12 @@ export function Conta({ email, aoSair, lado, compacta }: { email: string; aoSair
   const caixa = useRef<HTMLDivElement>(null)
   const botao = useRef<HTMLButtonElement>(null)
 
+  // trocou de aba: o menu fecha
+  useEffect(() => {
+    const f = () => setAberto(false)
+    window.addEventListener('hashchange', f)
+    return () => window.removeEventListener('hashchange', f)
+  }, [])
   useEffect(() => {
     if (!aberto) return
     const fora = (e: PointerEvent) => { if (!caixa.current?.contains(e.target as Node)) setAberto(false) }
@@ -50,14 +57,9 @@ export function Conta({ email, aoSair, lado, compacta }: { email: string; aoSair
           </div>
           <div className="conta-menu-bloco">
             <span className="conta-menu-rotulo">Aparência</span>
-            <div className="segmentado largo" role="group" aria-label="Aparência">
-              {TEMAS.map(([id, nome, icone]) => (
-                <button key={id} type="button" role="menuitemradio" aria-checked={preferencia === id} className={preferencia === id ? 'ativo' : ''}
-                  onClick={() => definirTema(id)}>
-                  <Icone nome={icone} tamanho={15} />{nome}
-                </button>
-              ))}
-            </div>
+            <Segmentado largo rotulo="Aparência" valor={preferencia}
+              opcoes={TEMAS.map(([id, nome, icone]) => [id, <><Icone nome={icone} tamanho={15} />{nome}</>])}
+              aoMudar={(id, e) => definirTema(id, { x: e.clientX, y: e.clientY })} />
           </div>
           <p className="conta-menu-nota"><Icone nome="relogio" tamanho={14} />Parado 30 minutos, o painel sai sozinho.</p>
           <button type="button" role="menuitem" className="conta-sair" disabled={saindo} onClick={() => { setSaindo(true); aoSair() }}>

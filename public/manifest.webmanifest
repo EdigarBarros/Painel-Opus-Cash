@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Painel OpusCash",
+  "short_name": "Painel",
+  "description": "Painel de suporte do OpusCash",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050c1d",
+  "theme_color": "#070b14",
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

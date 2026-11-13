@@ -93,6 +93,11 @@ export const NOME_DA_ACAO: Record<string, string> = {
   stripe_dias_gratis: 'Stripe: deu dias grátis no cartão',
   stripe_reembolsar: 'Stripe: reembolsou uma cobrança',
   stripe_link_cartao: 'Stripe: gerou link para trocar o cartão',
+  novidade_criar: 'Criou uma novidade',
+  novidade_editar: 'Editou uma novidade',
+  novidade_publicar: 'Publicou uma novidade',
+  novidade_despublicar: 'Tirou uma novidade do ar',
+  novidade_apagar: 'Apagou uma novidade',
 }
 
 /** Duas letras para o avatar: "Maria Souza" → "MS"; "joao.silva@x.com" → "JS"; "ana@x.com" → "AN". */
@@ -120,6 +125,7 @@ export const ICONE_DA_ACAO: Record<string, string> = {
   excluir: 'lixeira', erro_resolver: 'check', erro_reabrir: 'historico', incluir_admin: 'pessoa',
   stripe_cancelar_fim: 'cartao', stripe_desfazer_cancelamento: 'desfazer', stripe_cancelar_agora: 'cartao', stripe_cobrar_de_novo: 'atualizar',
   stripe_dias_gratis: 'estrela', stripe_reembolsar: 'desfazer', stripe_link_cartao: 'cartao',
+  novidade_criar: 'estrela', novidade_editar: 'lapis', novidade_publicar: 'estrela', novidade_despublicar: 'pausa', novidade_apagar: 'lixeira',
 }
 
 /** Nome de cada tela do OpusCash (o que o app manda na medição de uso, lib/uso.ts do OpusCash). */

@@ -36,7 +36,7 @@ const FUNDO_DA_COR: Record<CorNovidade, string> = {
 const TELAS: [string, string][] = [
   ['', 'Só fechar (sem botão "Ver agora")'], ['inicio', 'Início'], ['lancamentos', 'Lançamentos'], ['analise', 'Consultor'],
   ['invest', 'Invest'], ['contas', 'Contas do mês'], ['cartoes', 'Cartões'], ['dividas', 'Dívidas'], ['metas', 'Metas'],
-  ['patrimonio', 'Dinheiro guardado'], ['ano', 'Resumo do ano'], ['configuracoes', 'Configurações'],
+  ['patrimonio', 'Dinheiro guardado'], ['ano', 'Resumo do ano'], ['configuracoes', 'Configurações'], ['suporte', 'Suporte (abre a janela de ajuda)'],
 ]
 const ONDE: [Novidade['onde'], string][] = [['todos', 'Site e app'], ['site', 'Só no site'], ['app', 'Só no app']]
 

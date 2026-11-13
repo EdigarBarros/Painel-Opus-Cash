@@ -19,6 +19,7 @@ const TIPOS = {
   anotacao: { nome: 'Anotações', cor: 'var(--divida)' },
   erros: { nome: 'Erros', cor: 'var(--indigo)' },
   conta: { nome: 'Contas e equipe', cor: 'var(--saida)' },
+  suporte: { nome: 'Suporte', cor: 'var(--destaque)' },
   leitura: { nome: 'Fichas abertas', cor: 'var(--cinza-grafico)' },
 } as const
 type Tipo = keyof typeof TIPOS
@@ -27,6 +28,8 @@ function tipoDe(acao: string): Tipo {
   if (acao.startsWith('acesso_')) return 'acesso'
   if (acao.startsWith('stripe_')) return 'stripe'
   if (acao.startsWith('erro_')) return 'erros'
+  if (acao === 'suporte_ver') return 'leitura'
+  if (acao.startsWith('suporte_')) return 'suporte'
   if (acao === 'anotar') return 'anotacao'
   if (acao === 'ver_ficha') return 'leitura'
   if (acao === 'excluir' || acao === 'incluir_admin') return 'conta'

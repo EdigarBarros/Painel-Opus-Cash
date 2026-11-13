@@ -113,3 +113,8 @@
 :root[data-movimento='reduzido'] .novidade, :root[data-movimento='reduzido'] .novidade *, :root[data-movimento='reduzido'] .novidade-fundo { animation: none !important; }
 .novidade-botoes button:focus { outline: none; }
 .novidade-botoes button:focus-visible { outline: 3px solid color-mix(in srgb, var(--n2) 50%, transparent); outline-offset: 2px; }
+
+/* novidade com arte (montada no editor do painel): a arte em cima, os botões embaixo */
+.novidade.novidade-arte { padding: 0 0 16px; gap: 14px; }
+.novidade.novidade-arte .novidade-botoes { padding: 0 16px; width: auto; justify-self: stretch; box-sizing: border-box; }
+.novidade.novidade-arte .arte-ajustada { justify-self: stretch; }

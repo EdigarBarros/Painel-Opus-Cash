@@ -68,8 +68,10 @@ function AnelDias({ fim, inicio, cor }: { fim: string; inicio: number; cor: stri
       <svg viewBox="0 0 128 128" aria-hidden="true">
         <circle cx="64" cy="64" r={R} className="anel-fundo" />
         {/* quase cheio: anel inteiro, sem pontas (as duas pontas arredondadas se encontrando faziam um calombo no topo) */}
+        {/* o traço enche correndo pela volta (dashoffset), sem abrir vão no fim; cheio = a volta inteira, sem pontas */}
         <circle cx="64" cy="64" r={R} className={`anel-cheio ${cheio ? 'completo' : ''}`}
-          strokeDasharray={cheio ? `${C} 0` : `${C * frac} ${C}`} transform="rotate(-90 64 64)" />
+          strokeDasharray={`${cheio ? C : C * frac} ${C}`} transform="rotate(-90 64 64)"
+          style={{ '--len': `${cheio ? C : C * frac}` } as React.CSSProperties} />
       </svg>
       <div className="anel-centro">
         <strong><Numero valor={dias} /></strong>

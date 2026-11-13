@@ -522,7 +522,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
 .aba-ficha.ativo b { color: var(--destaque-texto); background: var(--destaque); }
 .ficha-conteudo { display: grid; gap: 16px; animation: aba-entra .55s var(--mola); }
 @keyframes aba-entra { from { opacity: 0; transform: translateY(12px); } }
-.grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .grade-ficha > * { animation: surgir-sem-desfoque .6s var(--mola) backwards; }
 .grade-ficha > :nth-child(2) { animation-delay: .08s; }
 .pilha-ficha { display: grid; gap: 16px; }
@@ -971,7 +971,7 @@ a.kpi:hover .kpi-seta { color: var(--c); transform: translateX(3px); }
 }
 
 .grade-inicio { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
-.grade-inicio.metades { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.grade-inicio.metades { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 .pagina.inicio .cartao { padding: 20px 22px; }
 .pagina.inicio .cartao-topo { align-items: center; margin-bottom: 14px; }
 .pagina.inicio .cartao-topo h2 { display: flex; align-items: center; gap: 9px; margin: 0; }
@@ -1145,3 +1145,58 @@ a.medidor:hover { background: var(--preench-4); text-decoration: none; }
 }
 /* animações reduzidas (escolha do menu da conta, como no OpusCash): tudo aparece pronto, sem nada se mexendo */
 :root[data-movimento='reduzido'] *, :root[data-movimento='reduzido'] *::before, :root[data-movimento='reduzido'] *::after { animation: none !important; transition: none !important; }
+
+/* ---------- encaixe: cartões lado a lado têm sempre a mesma altura, sem vão ---------- */
+.grade-inicio > .cartao, .grade-ficha > .cartao { display: flex; flex-direction: column; }
+/* lista que ocupa o espaço que sobrar no cartão e rola por dentro quando passa dele */
+.rolagem { flex: 1 1 0; min-height: 150px; align-content: start; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--preench-1) transparent; }
+.linha-do-tempo.rolagem, .baloes.rolagem { padding-right: 6px; }
+.grade-ficha .rolagem { flex: 1 1 auto; min-height: 0; max-height: 560px; }
+/* botões em azulejos: duas colunas fixas; o último sozinho ocupa a linha inteira (sem meio vão) */
+.grade-ficha .azulejos, .zona-acoes .azulejos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.azulejos > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 640px) { .grade-ficha .azulejos { grid-template-columns: 1fr; } }
+.grade-ficha > .cartao .azulejos { margin-top: auto; padding-top: 16px; }
+.grafico.enche { flex: 1 1 0; }
+.grafico.enche > svg { position: absolute; inset: 0; }
+.movimento .legenda-linha { margin-top: 12px; }
+/* "tudo em dia" ocupa o meio do cartão */
+.calmo { height: 100%; min-height: 150px; display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; color: var(--texto-2); font-size: 13.5px; }
+.calmo strong { color: var(--texto); font-size: 16px; }
+.calmo .vazio-icone { width: 58px; height: 58px; color: var(--entrada); background: color-mix(in srgb, var(--entrada) 14%, transparent); }
+/* placar no pé do Pede atenção */
+.placar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.placar a {
+  --c: var(--entrada);
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; padding: 10px 12px; border-radius: 14px;
+  color: var(--texto-2); background: var(--superficie-2); border: 1px solid var(--borda); font-size: 12px; line-height: 1.3;
+  transition: border-color .25s, transform .45s var(--mola-salto);
+}
+.placar a:hover { text-decoration: none; border-color: color-mix(in srgb, var(--c) 45%, var(--borda)); transform: translateY(-2px); }
+.placar a:not(.tem) { --c: var(--entrada); }
+.placar svg { grid-row: span 2; color: var(--c); }
+.placar b { font-size: 18px; color: var(--texto); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.placar a.tem b { color: var(--c); }
+/* linha do tempo do acesso (ficha) */
+.trilha-acesso { list-style: none; margin: 14px 0 0; padding: 0; display: grid; }
+.trilha-acesso li { --c: var(--destaque); position: relative; display: flex; gap: 12px; padding-bottom: 12px; animation: surgir-sem-desfoque .5s var(--mola) backwards; animation-delay: calc(var(--i, 0) * 60ms + .2s); }
+.trilha-acesso li:last-child { padding-bottom: 0; }
+.trilha-acesso li::before { content: ''; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--separador); }
+.trilha-acesso li:last-child::before { display: none; }
+.trilha-ponto {
+  flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  color: var(--c); background: var(--superficie); border: 2px dashed color-mix(in srgb, var(--c) 55%, transparent);
+}
+.trilha-acesso li.feito .trilha-ponto { border-style: solid; border-color: transparent; background: color-mix(in srgb, var(--c) 16%, var(--superficie-2)); }
+.trilha-texto { display: grid; gap: 1px; padding-top: 3px; }
+.trilha-texto b { font-size: 13.5px; font-weight: 600; }
+.trilha-texto small { font-size: 12px; color: var(--texto-3); }
+@media (max-width: 640px) { .grade-inicio .rolagem { flex: none; max-height: 420px; } }
+@media (max-width: 900px) { .grade-ficha .rolagem { flex: none; max-height: 480px; min-height: 0; } }
+@media (max-width: 640px) { .placar { grid-template-columns: 1fr; } }
+.grade-inicio .rolagem:has(> .calmo.pouco) { display: flex; flex-direction: column; }
+.calmo.pouco { flex: 1; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--texto-3); font-size: 13px; }
+.calmo.pouco svg { color: var(--entrada); }
+.placar a:not(.tem) svg { color: var(--entrada); }
+.linha-do-tempo .calmo.pouco { padding: 18px 0 0; min-height: 0; }
+.linha-do-tempo .calmo.pouco::before { display: none; }

@@ -8,15 +8,15 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type P
 
 function useLargura<T extends HTMLElement>() {
   const ref = useRef<T>(null)
-  const [largura, setLargura] = useState(0)
+  const [tamanho, setTamanho] = useState({ largura: 0, altura: 0 })
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const ro = new ResizeObserver(([e]) => setLargura(Math.floor(e.contentRect.width)))
+    const ro = new ResizeObserver(([e]) => setTamanho({ largura: Math.floor(e.contentRect.width), altura: Math.floor(e.contentRect.height) }))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  return [ref, largura] as const
+  return [ref, tamanho.largura, tamanho.altura] as const
 }
 
 /** Topo do eixo arredondado para cima (1, 2, 2,5, 5 ou 10 × potência de 10). */
@@ -63,12 +63,14 @@ export interface Serie { nome: string; cor: string; valores: number[] }
 const MARGEM = { topo: 14, dir: 8, base: 26, esq: 44 }
 
 /** Moldura comum: eixos, linhas de grade, leitura do ponto em foco (mouse, toque ou setas) e a etiqueta flutuante. */
-function Moldura({ rotulos, series, altura, formato, rotuloDoPonto, tituloDoPonto = rotuloDoPonto, desenhar, empilhar, descricao }: {
-  rotulos: string[]; series: Serie[]; altura: number; formato: (n: number) => string
+function Moldura({ rotulos, series, altura: alturaPedida, encher, formato, rotuloDoPonto, tituloDoPonto = rotuloDoPonto, desenhar, empilhar, descricao }: {
+  rotulos: string[]; series: Serie[]; altura: number; encher?: boolean; formato: (n: number) => string
   rotuloDoPonto: (i: number) => string; tituloDoPonto?: (i: number) => string; empilhar?: boolean; descricao: string
   desenhar: (g: { x: (i: number) => number; y: (v: number) => number; passo: number; foco: number | null; base: number }) => ReactNode
 }) {
-  const [ref, largura] = useLargura<HTMLDivElement>()
+  const [ref, largura, alturaMedida] = useLargura<HTMLDivElement>()
+  // encher: o gráfico ocupa toda a altura que o cartão tiver (sem vão embaixo); `altura` vira o mínimo
+  const altura = encher ? Math.max(alturaPedida, alturaMedida) : alturaPedida
   const [foco, setFoco] = useState<number | null>(null)
   const n = rotulos.length
   const totais = rotulos.map((_, i) => (empilhar ? series.reduce((s, x) => s + (x.valores[i] ?? 0), 0) : Math.max(...series.map((x) => x.valores[i] ?? 0))))
@@ -97,7 +99,7 @@ function Moldura({ rotulos, series, altura, formato, rotuloDoPonto, tituloDoPont
   const etiquetaX = foco !== null ? x(foco) : 0
   const lado = etiquetaX > largura * 0.62 ? 'esquerda' : 'direita'
   return (
-    <div ref={ref} className="grafico" style={{ height: altura }} tabIndex={0} role="img" aria-label={descricao}
+    <div ref={ref} className={`grafico ${encher ? 'enche' : ''}`} style={encher ? { minHeight: alturaPedida } : { height: altura }} tabIndex={0} role="img" aria-label={descricao}
       onPointerMove={(e) => setFoco(indiceDo(e))} onPointerDown={(e) => setFoco(indiceDo(e))} onPointerLeave={() => setFoco(null)}
       onKeyDown={teclas} onBlur={() => setFoco(null)}>
       {largura > 0 && (
@@ -135,13 +137,13 @@ function Moldura({ rotulos, series, altura, formato, rotuloDoPonto, tituloDoPont
 }
 
 /** Linha suave com área em degradê. */
-export function GraficoArea({ rotulos, serie, altura = 240, formato, rotuloDoPonto, tituloDoPonto, descricao }: {
-  rotulos: string[]; serie: Serie; altura?: number; formato: (n: number) => string
+export function GraficoArea({ rotulos, serie, altura = 240, encher, formato, rotuloDoPonto, tituloDoPonto, descricao }: {
+  rotulos: string[]; serie: Serie; altura?: number; encher?: boolean; formato: (n: number) => string
   rotuloDoPonto: (i: number) => string; tituloDoPonto?: (i: number) => string; descricao: string
 }) {
   const id = useId().replace(/:/g, '')
   return (
-    <Moldura rotulos={rotulos} series={[serie]} altura={altura} formato={formato} rotuloDoPonto={rotuloDoPonto} tituloDoPonto={tituloDoPonto} descricao={descricao}
+    <Moldura rotulos={rotulos} series={[serie]} altura={altura} encher={encher} formato={formato} rotuloDoPonto={rotuloDoPonto} tituloDoPonto={tituloDoPonto} descricao={descricao}
       desenhar={({ x, y, foco, base }) => {
         const pts = serie.valores.map((v, i) => [x(i), y(v)] as [number, number])
         const linha = curva(pts)
@@ -166,12 +168,12 @@ export function GraficoArea({ rotulos, serie, altura = 240, formato, rotuloDoPon
 }
 
 /** Barras empilhadas (uma cor por série), com cantos arredondados no alto. */
-export function GraficoBarras({ rotulos, series, altura = 240, formato, rotuloDoPonto, tituloDoPonto, descricao }: {
-  rotulos: string[]; series: Serie[]; altura?: number; formato: (n: number) => string
+export function GraficoBarras({ rotulos, series, altura = 240, encher, formato, rotuloDoPonto, tituloDoPonto, descricao }: {
+  rotulos: string[]; series: Serie[]; altura?: number; encher?: boolean; formato: (n: number) => string
   rotuloDoPonto: (i: number) => string; tituloDoPonto?: (i: number) => string; descricao: string
 }) {
   return (
-    <Moldura rotulos={rotulos} series={series} altura={altura} formato={formato} rotuloDoPonto={rotuloDoPonto} tituloDoPonto={tituloDoPonto} empilhar descricao={descricao}
+    <Moldura rotulos={rotulos} series={series} altura={altura} encher={encher} formato={formato} rotuloDoPonto={rotuloDoPonto} tituloDoPonto={tituloDoPonto} empilhar descricao={descricao}
       desenhar={({ x, y, passo, foco, base }) => {
         const larg = Math.max(3, Math.min(26, passo * 0.62))
         return (

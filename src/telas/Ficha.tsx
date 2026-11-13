@@ -70,6 +70,41 @@ function AnelDias({ fim, inicio, cor }: { fim: string; inicio: number; cor: stri
   )
 }
 
+/** "há 3 dias", "ontem", "hoje", "amanhã", "daqui a 12 dias". */
+function relativo(iso: string, agora: number) {
+  const dias = Math.round((new Date(iso).getTime() - agora) / DIA)
+  if (dias === 0) return 'hoje'
+  if (dias === 1) return 'amanhã'
+  if (dias === -1) return 'ontem'
+  return dias > 0 ? `daqui a ${dias} dias` : `há ${-dias} dias`
+}
+
+/** Linha do tempo do acesso: do cadastro até a situação de hoje (o que já passou fica cheio; o que vem, vazado). */
+function TrilhaDoAcesso({ f }: { f: FichaDados }) {
+  const agora = useAgora()
+  const a = f.assinatura
+  const passou = (iso?: string | null) => Boolean(iso && new Date(iso).getTime() <= agora)
+  type Passo = { titulo: string; quando: string | null; feito: boolean; cor: string; icone: string }
+  const passos: Passo[] = [{ titulo: 'Criou a conta', quando: f.conta.criado_em, feito: true, cor: 'var(--destaque)', icone: 'pessoa' }]
+  if (a?.teste_fim) passos.push({ titulo: passou(a.teste_fim) ? 'Teste grátis acabou' : 'Teste grátis vai até', quando: a.teste_fim, feito: passou(a.teste_fim), cor: 'var(--indigo)', icone: 'ampulheta' })
+  if (a?.status === 'pix' && a.periodo_fim) passos.push({ titulo: passou(a.periodo_fim) ? 'Prazo liberado venceu' : 'Liberado até', quando: a.periodo_fim, feito: passou(a.periodo_fim), cor: 'var(--caixa)', icone: 'calendario' })
+  if (a?.status === 'cortesia') passos.push({ titulo: 'Virou vitalício', quando: a.atualizado_em, feito: true, cor: 'var(--violeta)', icone: 'infinito' })
+  if (a && pagaNoCartao(a.status)) passos.push({ titulo: a.cancela_no_fim ? 'Cartão: acesso até' : 'Cartão: próxima cobrança', quando: a.periodo_fim, feito: false, cor: 'var(--entrada)', icone: 'cartao' })
+  if (a?.status === 'canceled') passos.push({ titulo: 'Cancelou o cartão', quando: a.atualizado_em, feito: true, cor: 'var(--cinza-grafico)', icone: 'cartao' })
+  const nPag = f.pix_stripe.length + f.pagamentos.length
+  passos.push({ titulo: nPag ? (nPag === 1 ? '1 pagamento registrado' : `${nPag} pagamentos registrados`) : 'Nenhum pagamento registrado', quando: null, feito: nPag > 0, cor: 'var(--entrada)', icone: 'dinheiro' })
+  return (
+    <ol className="trilha-acesso">
+      {passos.map((p, i) => (
+        <li key={i} className={p.feito ? 'feito' : ''} style={{ '--c': p.cor, '--i': i } as React.CSSProperties}>
+          <span className="trilha-ponto"><Icone nome={p.icone} tamanho={13} /></span>
+          <span className="trilha-texto"><b>{p.titulo}</b>{p.quando && <small>{fmtData(p.quando)} · {relativo(p.quando, agora)}</small>}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function Acesso({ f, aoAbrir }: { f: FichaDados; aoAbrir: (j: Janela) => void }) {
   const agora = useAgora()
   const a = f.assinatura
@@ -125,7 +160,7 @@ function Acesso({ f, aoAbrir }: { f: FichaDados; aoAbrir: (j: Janela) => void })
     <section className="cartao">
       <header className="cartao-topo"><h2><Icone nome="escudo" tamanho={18} />Acesso ao OpusCash</h2><Etiqueta tom={s.tom}>{s.texto}</Etiqueta></header>
       {visual}
-      {a && !['teste', 'sem_assinatura'].includes(a.status) && a.teste_fim && <p className="nota">Já usou o teste grátis (até {fmtData(a.teste_fim)}).</p>}
+      <TrilhaDoAcesso f={f} />
       {cartao
         ? <p className="nota">O acesso vem do cartão: mexa nele na aba <b>Cartão e Stripe</b>. Para passar para Pix, prazo ou vitalício, use "Cancelar agora" lá (dá para já liberar os dias junto).</p>
         : (
@@ -221,7 +256,7 @@ function Historico({ registro }: { registro: FichaDados['registro'] }) {
       {registro.length === 0
         ? <p className="vazio-bonito"><Icone nome="check" tamanho={20} />Nenhuma ação nesta conta ainda.</p>
         : (
-          <ol className="linha-do-tempo com-icones">
+          <ol className="linha-do-tempo com-icones rolagem">
             {registro.map((r) => (
               <li key={r.id}>
                 <span className="ponto-icone"><Icone nome={ICONE_DA_ACAO[r.acao] ?? 'check'} tamanho={14} /></span>
@@ -658,7 +693,7 @@ function Anotacoes({ id, anotacoes, aoSalvar }: { id: string; anotacoes: FichaDa
       {anotacoes.length === 0
         ? <p className="vazio-bonito"><Icone nome="lapis" tamanho={20} />Nenhuma anotação ainda.</p>
         : (
-          <ul className="baloes">
+          <ul className="baloes rolagem">
             {anotacoes.map((n, i) => (
               <li key={n.id} style={{ '--i': Math.min(i, 10) } as React.CSSProperties}>
                 <span className="avatar pequeno" aria-hidden="true">{iniciais(n.admin_email ?? '?')}</span>

@@ -116,7 +116,7 @@ function Movimento({ dias }: { dias: Dia[] }) {
     const porSemana = periodo === 90
     const pontos = porSemana ? semanas : recorte.map((d) => ({ ini: d.dia, fim: d.dia, pix: d.pix, por_fora: d.por_fora }))
     grafico = (
-      <GraficoBarras altura={300} rotulos={pontos.map((p) => p.ini)} formato={dinheiroCurto}
+      <GraficoBarras altura={280} encher rotulos={pontos.map((p) => p.ini)} formato={dinheiroCurto}
         series={[
           { nome: 'Pix do site', cor: 'var(--caixa)', valores: pontos.map((p) => p.pix) },
           { nome: 'Por fora', cor: 'var(--violeta)', valores: pontos.map((p) => p.por_fora) },
@@ -127,7 +127,7 @@ function Movimento({ dias }: { dias: Dia[] }) {
     )
   } else {
     grafico = (
-      <GraficoArea altura={300} rotulos={recorte.map((d) => d.dia)} formato={inteiro}
+      <GraficoArea altura={280} encher rotulos={recorte.map((d) => d.dia)} formato={inteiro}
         serie={{ nome: aba === 'cadastros' ? 'Cadastros' : 'Erros', cor: aba === 'cadastros' ? 'var(--destaque)' : 'var(--saida)', valores: recorte.map(valorDe[aba]) }}
         rotuloDoPonto={(i) => diaCurto(recorte[i].dia)} tituloDoPonto={(i) => fmtDiaLongo(recorte[i].dia)}
         descricao={`${aba === 'cadastros' ? 'Cadastros' : 'Erros'} por dia nos últimos ${periodo} dias: ${total} no total.`} />
@@ -175,7 +175,7 @@ function quandoVence(iso: string | null) {
   return dias <= 0 ? 'vence hoje' : dias === 1 ? 'vence amanhã' : `vence em ${dias} dias`
 }
 
-function PedeAtencao({ itens, total }: { itens: Atencao[]; total: number }) {
+function PedeAtencao({ itens, total, cartoes, prazos, testes }: { itens: Atencao[]; total: number; cartoes: number; prazos: number; testes: number }) {
   const MOTIVO: Record<Atencao['motivo'], { texto: (a: Atencao) => string; tom: string }> = {
     cartao_recusado: { texto: () => 'Cartão recusado', tom: 'vermelho' },
     prazo_vence: { texto: (a) => `Prazo ${quandoVence(a.quando)}`, tom: 'amarelo' },
@@ -187,8 +187,9 @@ function PedeAtencao({ itens, total }: { itens: Atencao[]; total: number }) {
         <h2><Icone nome="sino" tamanho={18} />Pede atenção</h2>
         {total > 0 && <span className="contador">{total}</span>}
       </header>
+      <div className="rolagem">
       {itens.length === 0
-        ? <p className="vazio-bonito"><Icone nome="check" tamanho={22} />Nada vencendo nos próximos 7 dias e nenhum cartão recusado.</p>
+        ? <div className="calmo"><span className="vazio-icone"><Icone nome="check" tamanho={26} /></span><strong>Tudo em dia</strong><span>Nada vencendo nos próximos 7 dias e nenhum cartão recusado.</span></div>
         : (
           <ul className="lista-pessoas">
             {itens.map((a) => {
@@ -208,7 +209,22 @@ function PedeAtencao({ itens, total }: { itens: Atencao[]; total: number }) {
             })}
           </ul>
         )}
+      {itens.length > 0 && itens.length < 4 && (
+        <div className="calmo pouco"><Icone nome="check" tamanho={20} /><span>Fora {itens.length === 1 ? 'esta conta' : 'estas contas'}, tudo em dia.</span></div>
+      )}
+      </div>
       {total > itens.length && <a className="ver-mais" href="#/contas?filtro=problemas">Ver todas as contas com problema<Icone nome="seta" tamanho={16} /></a>}
+      <div className="placar">
+        <a href="#/contas?filtro=problemas" className={cartoes ? 'tem' : ''} style={{ '--c': 'var(--saida)' } as React.CSSProperties}>
+          <Icone nome={cartoes ? 'cartao' : 'check'} tamanho={16} /><b>{cartoes}</b><span>{cartoes === 1 ? 'cartão recusado' : 'cartões recusados'}</span>
+        </a>
+        <a href="#/contas?filtro=liberados" className={prazos ? 'tem' : ''} style={{ '--c': 'var(--divida)' } as React.CSSProperties}>
+          <Icone nome={prazos ? 'relogio' : 'check'} tamanho={16} /><b>{prazos}</b><span>{prazos === 1 ? 'prazo vence' : 'prazos vencem'} em 7 dias</span>
+        </a>
+        <a href="#/contas?filtro=teste_vence" className={testes ? 'tem' : ''} style={{ '--c': 'var(--caixa)' } as React.CSSProperties}>
+          <Icone nome={testes ? 'ampulheta' : 'check'} tamanho={16} /><b>{testes}</b><span>{testes === 1 ? 'teste vence' : 'testes vencem'} em 7 dias</span>
+        </a>
+      </div>
     </section>
   )
 }
@@ -288,7 +304,7 @@ function Uso({ r }: { r: Resumo }) {
 
 function UltimasAcoes() {
   const { dados, erro: falhou } = useDados('registro:sem-leituras', () => api<Acao[]>('registro', { sem_leituras: true }))
-  const linhas = dados ? dados.slice(0, 6) : null
+  const linhas = dados ? dados.slice(0, 15) : null
   const erro = Boolean(falhou && !dados)
   return (
     <section className="cartao">
@@ -300,7 +316,7 @@ function UltimasAcoes() {
         : !linhas ? <div className="esqueleto" style={{ height: 180 }} />
         : linhas.length === 0 ? <p className="vazio-bonito">Nenhuma ação ainda.</p>
         : (
-          <ol className="linha-do-tempo">
+          <ol className="linha-do-tempo rolagem">
             {linhas.map((l) => (
               <li key={l.id}>
                 <span className="ponto" />
@@ -311,6 +327,7 @@ function UltimasAcoes() {
                 <span className="lt-quando">{haQuanto(l.criado_em)} · {l.admin_email.split('@')[0]}</span>
               </li>
             ))}
+            {linhas.length < 4 && <li className="calmo pouco"><Icone nome="check" tamanho={20} /><span>Só isso por enquanto.</span></li>}
           </ol>
         )}
     </section>
@@ -423,7 +440,7 @@ export function Inicio() {
       </div>
 
       <div className="grade-inicio metades">
-        <PedeAtencao itens={r.atencao ?? []} total={totalAtencao} />
+        <PedeAtencao itens={r.atencao ?? []} total={totalAtencao} cartoes={r.cartao_pendente} prazos={r.pix_vence_7d} testes={r.teste_vence_7d} />
         <UltimosCadastros lista={r.ultimos_cadastros ?? []} />
       </div>
 
@@ -432,12 +449,6 @@ export function Inicio() {
         <UltimasAcoes />
       </div>
 
-      <div className="atalhos">
-        <a href="#/contas?filtro=teste_vence" className="atalho"><Icone nome="ampulheta" tamanho={18} /><span>Testes que vencem<b>{r.teste_vence_7d}</b></span></a>
-        <a href="#/contas?filtro=liberados" className="atalho"><Icone nome="relogio" tamanho={18} /><span>Prazos que vencem<b>{r.pix_vence_7d}</b></span></a>
-        <a href="#/contas?filtro=sem_acesso" className="atalho"><Icone nome="cadeado" tamanho={18} /><span>Sem acesso<b>{r.sem_acesso}</b></span></a>
-        <a href="#/contas?filtro=vitalicio" className="atalho"><Icone nome="infinito" tamanho={18} /><span>Vitalícios<b>{r.cortesia}</b></span></a>
-      </div>
     </div>
   )
 }

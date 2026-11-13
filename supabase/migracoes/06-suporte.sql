@@ -1,5 +1,5 @@
--- Painel 05: atendimento dos pedidos de ajuda (rodável de novo).
--- Precisa da migração 32 do OpusCash (tabelas suporte_tickets e suporte_mensagens).
+-- Painel 06: atendimento dos pedidos de ajuda (rodável de novo).
+-- Precisa da migração 33 do OpusCash (tabelas suporte_tickets e suporte_mensagens).
 -- Só a função "admin" (chave de serviço) usa estas funções; cada ação fica em adm_registro pela própria função.
 
 -- Lista de pedidos para a tela Suporte.

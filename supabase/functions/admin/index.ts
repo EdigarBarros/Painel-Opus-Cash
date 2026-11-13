@@ -370,7 +370,7 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const online = Boolean(presenca?.aberto && Date.now() - new Date(presenca.visto_em).getTime() < 150_000)
       return { ...data, foto: typeof foto === 'string' ? foto : null, presenca: presenca ? { ...presenca, online } : null }
     }
-    // ---------- suporte: pedidos de ajuda que as pessoas abrem no OpusCash (migração 32 do OpusCash, 05 do painel) ----------
+    // ---------- suporte: pedidos de ajuda que as pessoas abrem no OpusCash (migração 33 do OpusCash, 06 do painel) ----------
     case 'suporte_contagem': {
       const { data, error } = await db.rpc('adm_suporte_contagem')
       doBanco(error)

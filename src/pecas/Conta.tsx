@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { iniciais } from '../lib/formato'
-import { definirTema, useTema, type Preferencia } from '../lib/tema'
+import { definirMovimento, definirTema, useMovimento, useTema, type Preferencia } from '../lib/tema'
 import { Icone } from './Icone'
 import { Segmentado } from './Segmentado'
 
@@ -14,6 +14,7 @@ export function Conta({ email, aoSair, lado, compacta }: { email: string; aoSair
   const [aberto, setAberto] = useState(false)
   const [saindo, setSaindo] = useState(false)
   const { preferencia } = useTema()
+  const movimento = useMovimento()
   const caixa = useRef<HTMLDivElement>(null)
   const botao = useRef<HTMLButtonElement>(null)
 
@@ -60,6 +61,9 @@ export function Conta({ email, aoSair, lado, compacta }: { email: string; aoSair
             <Segmentado largo rotulo="Aparência" valor={preferencia}
               opcoes={TEMAS.map(([id, nome, icone]) => [id, <><Icone nome={icone} tamanho={15} />{nome}</>])}
               aoMudar={(id, e) => definirTema(id, { x: e.clientX, y: e.clientY })} />
+            <span className="conta-menu-rotulo">Animações</span>
+            <Segmentado largo rotulo="Animações" valor={movimento} aoMudar={(m) => definirMovimento(m)}
+              opcoes={[['completo', <><Icone nome="estrela" tamanho={15} />Completas</>], ['reduzido', <><Icone nome="pausa" tamanho={15} />Reduzidas</>]]} />
           </div>
           <p className="conta-menu-nota"><Icone nome="relogio" tamanho={14} />Parado 30 minutos, o painel sai sozinho.</p>
           <button type="button" role="menuitem" className="conta-sair" disabled={saindo} onClick={() => { setSaindo(true); aoSair() }}>

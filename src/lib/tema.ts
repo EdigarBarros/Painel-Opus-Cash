@@ -91,5 +91,28 @@ export function useTema() {
   return { preferencia: pref, tema }
 }
 
-/** A pessoa pediu menos movimento no aparelho: números e gráficos aparecem prontos. */
-export const semMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// ---------- animações ----------
+// Como no OpusCash: o painel tem a própria escolha de animações. O "reduzir movimento" do sistema (que no Windows vem
+// junto com "Efeitos de animação" desligado) não tira as animações sozinho; quem prefere menos movimento escolhe no menu da conta.
+export type Movimento = 'completo' | 'reduzido'
+const CHAVE_MOVIMENTO = 'painel-movimento'
+let movimento: Movimento = (() => {
+  try { return localStorage.getItem(CHAVE_MOVIMENTO) === 'reduzido' ? 'reduzido' : 'completo' } catch { return 'completo' }
+})()
+const ouvintesMovimento = new Set<() => void>()
+const aplicarMovimento = () => {
+  document.documentElement.dataset.movimento = movimento
+  ouvintesMovimento.forEach((f) => f())
+}
+aplicarMovimento()
+
+/** true quando a pessoa escolheu animações reduzidas no menu da conta. */
+export const semMovimento = () => movimento === 'reduzido'
+export function useMovimento() {
+  return useSyncExternalStore((f) => { ouvintesMovimento.add(f); return () => { ouvintesMovimento.delete(f) } }, () => movimento)
+}
+export function definirMovimento(m: Movimento) {
+  movimento = m
+  try { localStorage.setItem(CHAVE_MOVIMENTO, m) } catch { /* vale só nesta visita */ }
+  aplicarMovimento()
+}

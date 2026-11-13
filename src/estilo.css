@@ -422,9 +422,10 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
   background: conic-gradient(var(--c), color-mix(in srgb, var(--c) 30%, transparent), var(--c)); }
 .avatar-anel .avatar { width: 40px; height: 40px; border: 2px solid var(--superficie); background: color-mix(in srgb, var(--c) 22%, var(--superficie-2)); }
 .presenca { position: absolute; right: -1px; bottom: -1px; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid var(--superficie); background: var(--cinza-grafico); }
-.presenca.hoje { background: var(--entrada); box-shadow: 0 0 0 0 var(--entrada); animation: pulso 2.2s ease-out infinite; }
+.presenca.hoje { background: var(--entrada); }
+.presenca.hoje::after { content: ''; position: absolute; inset: -2.5px; border-radius: 50%; border: 2px solid var(--entrada); animation: pulso 2.4s ease-out infinite; }
 .presenca.semana { background: var(--divida); }
-@keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--entrada) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+@keyframes pulso { from { transform: scale(.8); opacity: .9; } 70%, to { transform: scale(2.1); opacity: 0; } }
 .conta-ident { display: grid; min-width: 0; }
 .conta-titulo { font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conta-sub { font-size: 12.5px; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -472,10 +473,9 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
   border: 1px solid color-mix(in srgb, var(--c) 28%, var(--borda)); box-shadow: var(--sombra);
 }
 .heroi-aurora { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.heroi-aurora i { position: absolute; width: 46%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent); opacity: .22; animation: aurora 16s ease-in-out infinite alternate; }
+.heroi-aurora i { position: absolute; width: 46%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent); opacity: .2; }
 .heroi-aurora i:first-child { right: -12%; top: -60%; }
-.heroi-aurora i:last-child { right: 22%; bottom: -80%; opacity: .1; background: radial-gradient(closest-side, var(--marca-2), transparent); animation-duration: 22s; animation-direction: alternate-reverse; }
-@keyframes aurora { to { transform: translate(-12%, 14%) scale(1.15); } }
+.heroi-aurora i:last-child { right: 22%; bottom: -80%; opacity: .1; background: radial-gradient(closest-side, var(--marca-2), transparent); }
 .heroi-quem { display: flex; align-items: center; gap: 20px; min-width: 0; }
 .avatar-heroi {
   flex: none; display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%;
@@ -495,7 +495,8 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
 .copiar:hover { color: var(--texto); border-color: var(--borda-forte); }
 .heroi-textos .etiquetas { margin-top: 2px; }
 .heroi-dados { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; }
-.heroi-dados > div { padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--superficie) 70%, transparent); border: 1px solid var(--borda); backdrop-filter: blur(6px); }
+.heroi-dados > div { padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--superficie) 78%, transparent); border: 1px solid var(--borda); transition: transform .5s var(--mola), border-color .25s; }
+@media (hover: hover) and (pointer: fine) { .heroi-dados > div:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--c) 40%, var(--borda)); } }
 .heroi-dados dt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3); font-weight: 600; }
 .heroi-dados dd { margin: 4px 0 0; font-weight: 650; font-size: 15px; display: grid; }
 .heroi-dados dd small { font-weight: 500; font-size: 12px; color: var(--texto-3); }
@@ -520,7 +521,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
 .aba-ficha b { min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; line-height: 18px; text-align: center; color: var(--texto-2); background: var(--preench-3); }
 .aba-ficha.ativo b { color: var(--destaque-texto); background: var(--destaque); }
 .ficha-conteudo { display: grid; gap: 16px; animation: aba-entra .55s var(--mola); }
-@keyframes aba-entra { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } }
+@keyframes aba-entra { from { opacity: 0; transform: translateY(12px); } }
 .grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .grade-ficha > * { animation: surgir-sem-desfoque .6s var(--mola) backwards; }
 .grade-ficha > :nth-child(2) { animation-delay: .08s; }
@@ -848,7 +849,7 @@ body::before {
   color: var(--texto); border: 1px solid color-mix(in srgb, var(--c) 22%, var(--borda)); box-shadow: var(--sombra);
   background: linear-gradient(150deg, color-mix(in srgb, var(--c) 12%, transparent), transparent 62%), var(--superficie);
   transition: transform .5s var(--mola), box-shadow .5s var(--mola), border-color .3s;
-  animation: surgir .7s var(--mola) backwards;
+  animation: surgir-sem-desfoque .7s var(--mola) backwards;
 }
 .kpi:nth-child(2) { animation-delay: 60ms; } .kpi:nth-child(3) { animation-delay: 120ms; } .kpi:nth-child(4) { animation-delay: 180ms; }
 a.kpi:hover { text-decoration: none; }
@@ -875,7 +876,7 @@ a.kpi:hover .kpi-seta { color: var(--c); transform: translateX(3px); }
 
 .grade-inicio { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
 .grade-inicio.metades { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-.pagina.inicio .cartao { padding: 20px 22px; animation: surgir .8s var(--mola) .1s backwards; }
+.pagina.inicio .cartao { padding: 20px 22px; }
 .pagina.inicio .cartao-topo { align-items: center; margin-bottom: 14px; }
 .pagina.inicio .cartao-topo h2 { display: flex; align-items: center; gap: 9px; margin: 0; }
 .pagina.inicio .cartao-topo h2 svg { color: var(--texto-3); }
@@ -1046,6 +1047,5 @@ a.medidor:hover { background: var(--preench-4); text-decoration: none; }
   .pagina.inicio .cartao { padding: 18px 16px; }
   .atalhos { grid-template-columns: 1fr; }
 }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
-}
+/* animações reduzidas (escolha do menu da conta, como no OpusCash): tudo aparece pronto, sem nada se mexendo */
+:root[data-movimento='reduzido'] *, :root[data-movimento='reduzido'] *::before, :root[data-movimento='reduzido'] *::after { animation: none !important; transition: none !important; }

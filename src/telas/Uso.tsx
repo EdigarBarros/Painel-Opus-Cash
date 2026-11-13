@@ -5,7 +5,7 @@ import { duracao, fmtData, fmtDataCurta, fmtDataHora, haQuanto, inteiro, NOME_DO
 import { GraficoBarras } from '../pecas/Graficos'
 import { Icone } from '../pecas/Icone'
 import { Numero } from '../pecas/Numero'
-import { ErroNaTela, Etiqueta } from '../ui'
+import { ErroNaTela } from '../ui'
 
 export interface UsoDados {
   presenca: { visto_em: string; aberto: boolean; tela: string | null; idioma: string | null; aparelho: string | null; versao: string | null
@@ -19,9 +19,9 @@ export interface UsoDados {
   contagens: Record<string, { n: number; ultimo: string | null }>
 }
 
-const MODULOS: [string, string][] = [
-  ['dividas', 'Dívidas'], ['contas', 'Contas do mês'], ['cartoes', 'Cartões'], ['bancos', 'Bancos'], ['investimentos', 'Investimentos'],
-  ['moedas', 'Outras moedas'], ['metas', 'Metas'],
+const MODULOS: [string, string, string][] = [
+  ['dividas', 'Dívidas', 'alerta'], ['contas', 'Contas do mês', 'calendario'], ['cartoes', 'Cartões', 'cartao'], ['bancos', 'Bancos', 'carteira'],
+  ['investimentos', 'Investimentos', 'investir'], ['moedas', 'Outras moedas', 'globo'], ['metas', 'Metas', 'meta'],
 ]
 
 const OBJETIVOS: Record<string, string> = {
@@ -143,8 +143,12 @@ export function UsoDaConta({ id }: { id: string }) {
             <Linha ok="neutro" icone="globo" titulo={`Moeda principal: ${pe?.moeda ?? '—'}`} texto={pe?.moedas?.length ? `Outras: ${pe.moedas.join(', ')}` : 'Sem outras moedas'} />
           </ul>
           <p className="uso-rotulo">Abas ligadas</p>
-          <div className="etiquetas">
-            {MODULOS.map(([k, nome]) => <Etiqueta key={k} tom={pe?.modulos?.[k] ? 'verde' : 'cinza'}>{pe?.modulos?.[k] ? '✓ ' : ''}{nome}</Etiqueta>)}
+          <div className="modulos-grade">
+            {MODULOS.map(([k, nome, icone]) => (
+              <span key={k} className={`modulo ${pe?.modulos?.[k] ? 'ligado' : ''}`} title={pe?.modulos?.[k] ? `${nome}: ligada` : `${nome}: desligada`}>
+                <Icone nome={icone} tamanho={16} /><span className="modulo-nome">{nome}</span>{pe?.modulos?.[k] && <Icone nome="check" tamanho={15} />}
+              </span>
+            ))}
           </div>
           {pe && <p className="nota">{ligados.length === 1 ? '1 aba extra ligada' : `${ligados.length} abas extras ligadas`} · painel mudado pela última vez em {fmtData(pe.atualizado_em)}</p>}
         </section>

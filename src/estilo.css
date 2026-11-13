@@ -519,7 +519,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
 .aba-ficha.ativo svg { color: var(--destaque); }
 .aba-ficha b { min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; line-height: 18px; text-align: center; color: var(--texto-2); background: var(--preench-3); }
 .aba-ficha.ativo b { color: var(--destaque-texto); background: var(--destaque); }
-.ficha-conteudo { display: grid; gap: 16px; animation: aba-entra .55s var(--mola); }
+.ficha-conteudo { display: grid; gap: 16px; }
 @keyframes aba-entra { from { opacity: 0; transform: translateY(12px); } }
 .grade-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .grade-ficha > * { animation: surgir-sem-desfoque .6s var(--mola) backwards; }
@@ -1221,7 +1221,9 @@ a.medidor:hover { background: var(--preench-4); text-decoration: none; }
   .ao-vivo-dados { grid-column: 1 / -1; flex-wrap: wrap; }
 }
 
-.preenchido { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+/* a última linha estica e ocupa a largura toda (sem vagas vazias) */
+.preenchido { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.preenchido li { flex: 1 1 210px; }
 .preenchido li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--borda);
   background: var(--superficie-2); animation: surgir-sem-desfoque .5s var(--mola) backwards; animation-delay: calc(var(--i) * 30ms); }
 .preenchido li.zero { opacity: .55; }
@@ -1254,3 +1256,36 @@ a.medidor:hover { background: var(--preench-4); text-decoration: none; }
 .online-texto small { font-size: 12.5px; color: var(--texto-3); }
 .reembolso-valor { color: var(--saida); }
 .mov-link { display: contents; color: inherit; text-decoration: none; }
+
+/* ---------- troca de tela sem "carregar de novo" (src/lib/visitas.ts) ---------- */
+/* anel de dias cheio: sem pontas arredondadas (faziam um calombo no topo) */
+.anel-cheio.completo { stroke-linecap: butt; }
+/* uma onda só: o que tem os próprios itens subindo não sobe junto com eles (eram duas ondas, uma dentro da outra) */
+.pagina > :is(.kpis, .mini-kpis, .lista-contas, .grade-contas, .lista-erros, .registro-dias) { animation: none; }
+/* dentro da ficha, cada aba entra inteira (a aba sobe; o que está dentro dela já vem no lugar) */
+.ficha-conteudo :is(.grade-ficha > *, .mini-kpi, .lista-movimentos li, .baloes li, .linha-do-tempo.com-icones li, .trilha-acesso li,
+  .preenchido li, .uso-telas li, .fatura-aberta, .ocorrencias li) { animation: none; }
+/* voltando a uma tela já vista: a página entra de uma vez, já pronta, sem refazer a abertura */
+.conteudo[data-entrada='leve'] > .pagina { animation: pagina-volta .4s var(--mola) both; }
+@keyframes pagina-volta { from { opacity: .35; transform: translateY(8px); } }
+.conteudo[data-entrada='leve'] :is(.pagina > *, .kpi, .linha-conta, .cartao-conta, .prazo-barra i, .avatar-heroi, .grade-ficha > *,
+  .anel-cheio, .mini-kpi, .lista-movimentos li, .baloes li, .linha-do-tempo.com-icones li, .fatura-aberta, .cc-plastico, .cartao-erro,
+  .erro-barra i, .erro-trilho i, .ocorrencias li, .registro-dia, .palavra, .revela, .barra-grupo, .rosca-arco, .progresso > span,
+  .trilha-acesso li, .preenchido li, .uso-telas li) { animation: none; }
+.conteudo[data-entrada='leve'] .cc-plastico::after { animation: none; opacity: 0; }
+
+/* ---------- encaixe das telas novas (uso do app) ---------- */
+/* listas de situação ocupam a altura do cartão, com as linhas distribuídas (sem vão no pé) */
+.grade-ficha > .cartao > .situacoes { flex: 1; align-content: space-evenly; }
+.modulos-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.modulos-grade > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+.modulo { --c: var(--texto-3); display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; font-size: 13px; font-weight: 600;
+  color: var(--texto-3); background: var(--superficie-2); border: 1px dashed var(--borda-forte); }
+.modulo.ligado { --c: var(--entrada); color: var(--texto); border: 1px solid color-mix(in srgb, var(--entrada) 35%, transparent); background: color-mix(in srgb, var(--entrada) 9%, var(--superficie-2)); }
+.modulo svg { flex: none; color: var(--c); }
+.modulo small { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--c); }
+@media (max-width: 640px) { .modulos-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); } .modulos-grade > :last-child:nth-child(3n + 1) { grid-column: auto; } .modulos-grade > :last-child:nth-child(odd) { grid-column: 1 / -1; } }
+.modulo-nome { flex: 1; min-width: 0; line-height: 1.25; }
+.modulo.ligado svg:last-child { color: var(--entrada); }
+/* troca de aba dentro da ficha: o conteúdo entra na hora (sem herdar o atraso da abertura da página) */
+.conteudo[data-entrada] .pagina > .ficha-conteudo.trocou { animation: aba-entra .45s var(--mola); animation-delay: 0s; }

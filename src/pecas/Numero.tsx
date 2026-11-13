@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { inteiro } from '../lib/formato'
 import { semMovimento } from '../lib/tema'
+import { primeiraVisita } from '../lib/visitas'
 
 const suave = (t: number) => 1 - Math.pow(1 - t, 4)
 
@@ -11,7 +12,7 @@ const suave = (t: number) => 1 - Math.pow(1 - t, 4)
 export function Numero({ valor, formato = inteiro, duracao = 1100 }: { valor: number; formato?: (n: number) => string; duracao?: number }) {
   const [parado] = useState(semMovimento)
   const texto = useRef<HTMLSpanElement>(null)
-  const atual = useRef(parado ? valor : 0)
+  const atual = useRef(parado || !primeiraVisita() ? valor : 0)
   const formatoAtual = useRef(formato)
   useLayoutEffect(() => { formatoAtual.current = formato })
   useEffect(() => {

@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api, mensagemDe } from '../lib/api'
 import { useAviso } from '../lib/useAviso'
 import {
-  fmtData, fmtDataHora, fmtDinheiro, haQuanto, hojeISO, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
+  corDoTom, fmtData, fmtDataHora, fmtDinheiro, haQuanto, hojeISO, ICONE_DA_ACAO, iniciais, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
 } from '../lib/formato'
-import { CampoMotivo, Carregando, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
+import { estiloLente, useLente } from '../lib/useLente'
+import { Icone } from '../pecas/Icone'
+import { Numero } from '../pecas/Numero'
+import { CampoMotivo, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
 import { CartaoStripe } from './Stripe'
 
 interface Assinatura {
@@ -25,19 +28,243 @@ interface FichaDados {
 
 type Janela = 'liberar' | 'teste' | 'revogar' | 'senha_email' | 'senha_link' | 'confirmar_email' | 'reenviar_confirmacao'
   | 'trocar_email' | 'bloquear' | 'desbloquear' | 'encerrar_sessoes' | 'excluir'
+type Aba = 'geral' | 'cartao' | 'pagamentos' | 'suporte' | 'erros'
 
 const FORMAS = [['pix', 'Pix'], ['transferencia', 'Transferência'], ['dinheiro', 'Dinheiro'], ['outro', 'Outro']] as const
+const ICONE_FORMA: Record<string, string> = { pix: 'dinheiro', transferencia: 'trocar', dinheiro: 'carteira', outro: 'reticencias' }
 const DIA = 86_400_000
 
 /** A hora em que a tela abriu: as contas de prazo usam sempre a mesma, em vez de mudar a cada redesenho. */
 const useAgora = () => useState(() => Date.now())[0]
 
+/** Botão grande com ícone, título e uma linha explicando (as ações da ficha). */
+function Azulejo({ icone, titulo, texto, aoClicar, tom, destaque }: { icone: string; titulo: string; texto?: string; aoClicar: () => void; tom?: 'perigo'; destaque?: boolean }) {
+  return (
+    <button type="button" className={`acao-azulejo ${tom ?? ''} ${destaque ? 'destaque' : ''}`} onClick={aoClicar}>
+      <span className="acao-icone"><Icone nome={icone} tamanho={19} /></span>
+      <span className="acao-textos"><b>{titulo}</b>{texto && <small>{texto}</small>}</span>
+    </button>
+  )
+}
+
+/** Anel com os dias que faltam (teste ou prazo), como os anéis do OpusCash. */
+function AnelDias({ fim, inicio, cor }: { fim: string; inicio: number; cor: string }) {
+  const agora = useAgora()
+  const total = Math.max(DIA, new Date(fim).getTime() - inicio)
+  const resta = Math.max(0, new Date(fim).getTime() - agora)
+  const dias = Math.ceil(resta / DIA)
+  const R = 52, C = 2 * Math.PI * R
+  const frac = Math.min(1, resta / total)
+  return (
+    <div className="anel-dias" style={{ '--c': cor } as React.CSSProperties}>
+      <svg viewBox="0 0 128 128" aria-hidden="true">
+        <circle cx="64" cy="64" r={R} className="anel-fundo" />
+        <circle cx="64" cy="64" r={R} className="anel-cheio" strokeDasharray={`${C * frac} ${C}`} transform="rotate(-90 64 64)" />
+      </svg>
+      <div className="anel-centro">
+        <strong><Numero valor={dias} /></strong>
+        <span>{dias === 1 ? 'dia' : 'dias'}</span>
+      </div>
+    </div>
+  )
+}
+
+function Acesso({ f, aoAbrir }: { f: FichaDados; aoAbrir: (j: Janela) => void }) {
+  const agora = useAgora()
+  const a = f.assinatura
+  const s = situacao(a?.status ?? 'sem_assinatura', a?.teste_fim, a?.periodo_fim)
+  const cartao = pagaNoCartao(a?.status)
+  const liberadoPeloPainel = a && ['pix', 'cortesia', 'teste'].includes(a.status)
+  const vale = (iso?: string | null) => Boolean(iso && new Date(iso).getTime() > agora)
+  const fim = a?.status === 'teste' && vale(a.teste_fim) ? a.teste_fim : a?.status === 'pix' && vale(a.periodo_fim) ? a.periodo_fim : null
+  // início aproximado para o anel: o teste começa no cadastro; o prazo, na última mudança da assinatura
+  const inicio = a?.status === 'teste' ? new Date(f.conta.criado_em).getTime() : new Date(a?.atualizado_em ?? f.conta.criado_em).getTime()
+  const cor = corDoTom(s.tom)
+
+  let visual: ReactNode
+  if (fim) {
+    visual = (
+      <div className="acesso-visual">
+        <AnelDias fim={fim} inicio={Math.min(inicio, agora - DIA)} cor={cor} />
+        <div className="acesso-textos">
+          <span className="acesso-rotulo">{a?.status === 'teste' ? 'Teste grátis' : 'Liberado por prazo'}</span>
+          <strong>até {fmtDataHora(fim)}</strong>
+          <small>No OpusCash a pessoa vê quantos dias faltam e o botão de renovar.</small>
+        </div>
+      </div>
+    )
+  } else if (a?.status === 'cortesia') {
+    visual = (
+      <div className="acesso-visual">
+        <span className="acesso-simbolo" style={{ '--c': cor } as React.CSSProperties}><Icone nome="infinito" tamanho={46} /></span>
+        <div className="acesso-textos"><span className="acesso-rotulo">Vitalício</span><strong>Acesso para sempre</strong><small>Sem cobrança. O Stripe nunca mexe nesta conta.</small></div>
+      </div>
+    )
+  } else if (cartao) {
+    visual = (
+      <div className="acesso-visual">
+        <span className="acesso-simbolo" style={{ '--c': cor } as React.CSSProperties}><Icone nome="cartao" tamanho={40} /></span>
+        <div className="acesso-textos">
+          <span className="acesso-rotulo">Assinatura no cartão</span>
+          <strong>{s.texto}</strong>
+          <small>{a?.periodo_fim ? `Período pago até ${fmtData(a.periodo_fim)}` : 'Cobrada pelo Stripe todo mês.'}{a?.cancela_no_fim ? ' · cancela no fim do período' : ''}</small>
+        </div>
+      </div>
+    )
+  } else {
+    visual = (
+      <div className="acesso-visual">
+        <span className="acesso-simbolo apagado"><Icone nome="cadeado" tamanho={38} /></span>
+        <div className="acesso-textos"><span className="acesso-rotulo">Sem acesso</span><strong>{s.texto}</strong><small>A pessoa vê a tela de assinatura ao entrar.</small></div>
+      </div>
+    )
+  }
+
+  return (
+    <section className="cartao">
+      <header className="cartao-topo"><h2><Icone nome="escudo" tamanho={18} />Acesso ao OpusCash</h2><Etiqueta tom={s.tom}>{s.texto}</Etiqueta></header>
+      {visual}
+      {a && !['teste', 'sem_assinatura'].includes(a.status) && a.teste_fim && <p className="nota">Já usou o teste grátis (até {fmtData(a.teste_fim)}).</p>}
+      {cartao
+        ? <p className="nota">O acesso vem do cartão: mexa nele na aba <b>Cartão e Stripe</b>. Para passar para Pix, prazo ou vitalício, use "Cancelar agora" lá (dá para já liberar os dias junto).</p>
+        : (
+          <div className="azulejos">
+            <Azulejo destaque icone="calendario" titulo="Liberar acesso" texto="Dias, até uma data ou vitalício" aoClicar={() => aoAbrir('liberar')} />
+            {a?.status !== 'pix' && a?.status !== 'cortesia' && <Azulejo icone="ampulheta" titulo="Estender teste" texto="Mais dias de teste grátis" aoClicar={() => aoAbrir('teste')} />}
+            {liberadoPeloPainel && <Azulejo tom="perigo" icone="cadeado" titulo="Tirar acesso" texto="Volta para a assinatura" aoClicar={() => aoAbrir('revogar')} />}
+          </div>
+        )}
+    </section>
+  )
+}
+
+function Situacao({ ok, icone, titulo, texto }: { ok: boolean | 'neutro'; icone: string; titulo: string; texto: string }) {
+  return (
+    <li className={`situacao-linha ${ok === 'neutro' ? '' : ok ? 'ok' : 'atencao'}`}>
+      <span className="situacao-icone"><Icone nome={icone} tamanho={17} /></span>
+      <span><b>{titulo}</b><small>{texto}</small></span>
+    </li>
+  )
+}
+
+function Login({ f, bloqueada, aoAbrir }: { f: FichaDados; bloqueada: boolean; aoAbrir: (j: Janela) => void }) {
+  const c = f.conta
+  return (
+    <section className="cartao">
+      <header className="cartao-topo"><h2><Icone nome="cadeado" tamanho={18} />Login e senha</h2></header>
+      <ul className="situacoes">
+        <Situacao ok={Boolean(c.confirmado_em)} icone={c.confirmado_em ? 'check' : 'alerta'} titulo={c.confirmado_em ? 'E-mail confirmado' : 'E-mail não confirmado'}
+          texto={c.confirmado_em ? `em ${fmtData(c.confirmado_em)}` : 'A pessoa ainda não clicou no link do e-mail'} />
+        {c.email_novo && <Situacao ok={false} icone="trocar" titulo="Troca de e-mail pendente" texto={`para ${c.email_novo}`} />}
+        <Situacao ok="neutro" icone="relogio" titulo="Último acesso" texto={haQuanto(c.ultimo_acesso)} />
+        <Situacao ok="neutro" icone="pessoa" titulo={c.sessoes === 1 ? '1 aparelho conectado' : `${c.sessoes} aparelhos conectados`} texto="Celulares e computadores com login ativo" />
+        <Situacao ok={!bloqueada} icone={bloqueada ? 'cadeado' : 'escudo'} titulo={bloqueada ? 'Bloqueada pelo suporte' : 'Conta livre'} texto={bloqueada ? 'Não consegue entrar até desbloquear' : 'Entra normalmente'} />
+      </ul>
+      <div className="azulejos">
+        <Azulejo icone="email" titulo="E-mail de senha nova" texto="O mesmo do “Esqueci a senha”" aoClicar={() => aoAbrir('senha_email')} />
+        <Azulejo icone="copiar" titulo="Link de senha nova" texto="Para mandar pelo WhatsApp" aoClicar={() => aoAbrir('senha_link')} />
+        {!c.confirmado_em && <Azulejo icone="email" titulo="Reenviar confirmação" aoClicar={() => aoAbrir('reenviar_confirmacao')} />}
+        {!c.confirmado_em && <Azulejo icone="check" titulo="Confirmar e-mail" texto="Sem o link" aoClicar={() => aoAbrir('confirmar_email')} />}
+        {!c.admin && <Azulejo icone="trocar" titulo="Trocar e-mail" texto="Perdeu o e-mail antigo" aoClicar={() => aoAbrir('trocar_email')} />}
+        {c.sessoes > 0 && <Azulejo icone="sair" titulo="Desconectar aparelhos" texto="Sai de todos" aoClicar={() => aoAbrir('encerrar_sessoes')} />}
+        {bloqueada
+          ? <Azulejo icone="escudo" titulo="Desbloquear conta" aoClicar={() => aoAbrir('desbloquear')} />
+          : !c.admin && <Azulejo tom="perigo" icone="cadeado" titulo="Bloquear conta" texto="Impede de entrar" aoClicar={() => aoAbrir('bloquear')} />}
+      </div>
+    </section>
+  )
+}
+
+function Pagamentos({ f }: { f: FichaDados }) {
+  type Item = { chave: string; valor: number; moeda: string; quando: string; titulo: string; icone: string; detalhe?: string | null; alerta?: string }
+  const itens: Item[] = [
+    ...f.pix_stripe.map((p) => ({ chave: p.sessao_id, valor: p.valor, moeda: p.moeda, quando: p.pago_em, titulo: 'Pix pelo site', icone: 'dinheiro',
+      detalhe: `${p.dias} dias de acesso`, alerta: p.creditado ? undefined : 'Não virou dias: devolver' })),
+    ...f.pagamentos.map((p) => ({ chave: `f${p.id}`, valor: p.valor, moeda: p.moeda, quando: `${p.pago_em}T12:00:00`,
+      titulo: `${FORMAS.find(([v]) => v === p.forma)?.[1] ?? p.forma} por fora`, icone: ICONE_FORMA[p.forma] ?? 'dinheiro', detalhe: p.observacao })),
+  ].sort((x, y) => new Date(y.quando).getTime() - new Date(x.quando).getTime())
+  const brl = (l: { valor: number; moeda: string }[]) => l.filter((p) => (p.moeda ?? 'brl').toLowerCase() === 'brl').reduce((s, p) => s + p.valor, 0)
+  const pix = brl(f.pix_stripe.filter((p) => p.creditado))
+  const fora = brl(f.pagamentos)
+  return (
+    <div className="pilha-ficha">
+      <div className="mini-kpis">
+        <div className="mini-kpi" style={{ '--c': 'var(--entrada)' } as React.CSSProperties}><span>Total recebido</span><strong><Numero valor={pix + fora} formato={(n) => fmtDinheiro(Math.round(n))} /></strong><small>{itens.length === 1 ? '1 pagamento' : `${itens.length} pagamentos`}</small></div>
+        <div className="mini-kpi" style={{ '--c': 'var(--caixa)' } as React.CSSProperties}><span>Pix do site</span><strong><Numero valor={pix} formato={(n) => fmtDinheiro(Math.round(n))} /></strong><small>pago pelo Stripe</small></div>
+        <div className="mini-kpi" style={{ '--c': 'var(--violeta)' } as React.CSSProperties}><span>Por fora</span><strong><Numero valor={fora} formato={(n) => fmtDinheiro(Math.round(n))} /></strong><small>registrado pelo suporte</small></div>
+      </div>
+      <section className="cartao">
+        <header className="cartao-topo"><h2><Icone nome="dinheiro" tamanho={18} />Pagamentos</h2></header>
+        {itens.length === 0
+          ? <div className="vazio-grande pequeno"><span className="vazio-icone"><Icone nome="dinheiro" tamanho={26} /></span><strong>Nenhum pagamento ainda</strong><p>Nem Pix do site, nem pagamento por fora. O cartão aparece na aba Cartão e Stripe.</p></div>
+          : (
+            <ul className="lista-movimentos">
+              {itens.map((p, i) => (
+                <li key={p.chave} style={{ '--i': Math.min(i, 12) } as React.CSSProperties}>
+                  <span className="mov-icone"><Icone nome={p.icone} tamanho={18} /></span>
+                  <span className="mov-texto"><b>{p.titulo}</b><small>{fmtData(p.quando)}{p.detalhe && ` · ${p.detalhe}`}</small>{p.alerta && <Etiqueta tom="vermelho">{p.alerta}</Etiqueta>}</span>
+                  <strong className="mov-valor">{fmtDinheiro(p.valor, p.moeda)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+      </section>
+    </div>
+  )
+}
+
+function Historico({ registro }: { registro: FichaDados['registro'] }) {
+  return (
+    <section className="cartao">
+      <header className="cartao-topo"><h2><Icone nome="historico" tamanho={18} />O que o suporte fez aqui</h2></header>
+      {registro.length === 0
+        ? <p className="vazio-bonito"><Icone nome="check" tamanho={20} />Nenhuma ação nesta conta ainda.</p>
+        : (
+          <ol className="linha-do-tempo com-icones">
+            {registro.map((r) => (
+              <li key={r.id}>
+                <span className="ponto-icone"><Icone nome={ICONE_DA_ACAO[r.acao] ?? 'check'} tamanho={14} /></span>
+                <span className="lt-texto"><b>{NOME_DA_ACAO[r.acao] ?? r.acao}</b></span>
+                {r.motivo && <span className="lt-motivo">“{r.motivo}”</span>}
+                <span className="lt-quando">{fmtDataHora(r.criado_em)} · {r.admin_email}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+    </section>
+  )
+}
+
+function ErrosDaConta({ erros }: { erros: FichaDados['erros'] }) {
+  return (
+    <section className="cartao">
+      <header className="cartao-topo"><h2><Icone nome="inseto" tamanho={18} />Erros desta conta</h2>{erros.length > 0 && <a className="ver-mais pequeno" href="#/erros">Ver todos os erros<Icone nome="seta" tamanho={16} /></a>}</header>
+      {erros.length === 0
+        ? <p className="vazio-bonito"><Icone nome="check" tamanho={20} />Nenhum erro registrado para esta pessoa.</p>
+        : (
+          <ul className="lista-movimentos erros-conta">
+            {erros.map((e, i) => (
+              <li key={e.id} style={{ '--i': Math.min(i, 12) } as React.CSSProperties}>
+                <span className="mov-icone"><Icone nome="inseto" tamanho={18} /></span>
+                <span className="mov-texto"><b>{e.mensagem}</b><small>{fmtDataHora(e.criado_em)}{e.onde && ` · ${e.onde}`}{e.versao && ` · versão ${e.versao}`}</small></span>
+              </li>
+            ))}
+          </ul>
+        )}
+    </section>
+  )
+}
+
 export function Ficha({ id }: { id: string }) {
   const [f, setF] = useState<FichaDados | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [janela, setJanela] = useState<Janela | null>(null)
+  const [aba, setAba] = useState<Aba>('geral')
+  const [copiado, setCopiado] = useState(false)
   const [toast, avisar] = useAviso()
   const [agora, setAgora] = useState(() => Date.now())
+  const refAbas = useRef<HTMLDivElement>(null)
+  const lente = useLente(refAbas, 'button.ativo', `${aba}|${Boolean(f)}`)
 
   const carregar = useCallback(() => {
     api<FichaDados>('ficha', { id }).then((d) => { setF(d); setErro(null) }).catch((e) => setErro(mensagemDe(e)))
@@ -52,142 +279,103 @@ export function Ficha({ id }: { id: string }) {
   }
 
   if (erro) return <ErroNaTela erro={erro} aoTentar={carregar} />
-  if (!f) return <Carregando />
+  if (!f) {
+    return (
+      <div className="pagina ficha" aria-busy="true">
+        <div className="esqueleto" style={{ height: 22, width: 90 }} />
+        <div className="esqueleto" style={{ height: 230 }} />
+        <div className="esqueleto" style={{ height: 46, width: 'min(560px, 100%)' }} />
+        <div className="grade-ficha"><div className="esqueleto" style={{ height: 320 }} /><div className="esqueleto" style={{ height: 320 }} /></div>
+      </div>
+    )
+  }
 
   const a = f.assinatura
   const s = situacao(a?.status ?? 'sem_assinatura', a?.teste_fim, a?.periodo_fim)
-  const cartao = pagaNoCartao(a?.status)
   const bloqueada = Boolean(f.conta.bloqueado_ate && new Date(f.conta.bloqueado_ate).getTime() > agora)
-  const liberadoPeloPainel = a && ['pix', 'cortesia', 'teste'].includes(a.status)
+  const temStripe = Boolean(a?.stripe_customer_id)
+  const nome = f.perfil?.nome
+  const nPag = f.pix_stripe.length + f.pagamentos.length
+  const abas: [Aba, string, string, number?][] = [
+    ['geral', 'Visão geral', 'inicio'],
+    ...(temStripe ? [['cartao', 'Cartão e Stripe', 'cartao'] as [Aba, string, string]] : []),
+    ['pagamentos', 'Pagamentos', 'dinheiro', nPag],
+    ['suporte', 'Anotações e histórico', 'lapis', f.anotacoes.length],
+    ['erros', 'Erros', 'inseto', f.erros.length],
+  ]
+  const copiarEmail = async () => {
+    await navigator.clipboard.writeText(f.conta.email)
+    setCopiado(true)
+    window.setTimeout(() => setCopiado(false), 2000)
+  }
 
   return (
-    <div className="pagina">
-      <a href="#/contas" className="voltar">← Contas</a>
-      <header className="ficha-topo">
-        <div>
-          <h1 className="ficha-email">{f.conta.email}</h1>
-          <p className="sub">{f.perfil?.nome || 'Sem nome no perfil'} · conta criada em {fmtData(f.conta.criado_em)}</p>
-        </div>
-        <div className="etiquetas">
-          <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
-          {bloqueada && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
-          {f.conta.admin && <Etiqueta tom="violeta">Administrador</Etiqueta>}
-        </div>
-      </header>
+    <div className="pagina ficha">
+      <a href="#/contas" className="voltar"><Icone nome="esq" tamanho={16} />Contas</a>
 
-      <div className="grade-ficha">
-        <section className="cartao">
-          <h2>Acesso ao OpusCash</h2>
-          <dl className="dados">
-            <dt>Situação</dt><dd>{s.texto}</dd>
-            {a?.status === 'teste' && a.teste_fim && <><dt>Teste grátis</dt><dd>{new Date(a.teste_fim).getTime() > agora ? 'vai' : 'foi'} até {fmtDataHora(a.teste_fim)}</dd></>}
-            {a?.status === 'pix' && a.periodo_fim && <><dt>{new Date(a.periodo_fim).getTime() > agora ? 'Liberado até' : 'Venceu em'}</dt><dd>{fmtDataHora(a.periodo_fim)}</dd></>}
-            {cartao && a?.periodo_fim && <><dt>Período pago até</dt><dd>{fmtDataHora(a.periodo_fim)}</dd></>}
-            {a && !['teste', 'sem_assinatura'].includes(a.status) && a.teste_fim && <><dt>Já usou o teste</dt><dd>até {fmtData(a.teste_fim)}</dd></>}
-            {a?.cancela_no_fim && <><dt>Cartão</dt><dd>cancela no fim do período</dd></>}
-            {f.perfil?.moeda && <><dt>Moeda</dt><dd>{f.perfil.moeda}</dd></>}
-          </dl>
-          {cartao
-            ? (
-              <p className="nota">
-                O acesso desta conta vem da assinatura no cartão: mexa nela no quadro do Stripe, logo abaixo. Para passar para
-                Pix, prazo ou vitalício, use "Cancelar agora" lá (dá para já liberar os dias junto).
-              </p>
-            )
-            : (
-              <div className="acoes">
-                <button className="botao principal" onClick={() => setJanela('liberar')}>Liberar acesso</button>
-                {a?.status !== 'pix' && a?.status !== 'cortesia' && <button className="botao" onClick={() => setJanela('teste')}>Estender teste grátis</button>}
-                {liberadoPeloPainel && <button className="botao perigo-leve" onClick={() => setJanela('revogar')}>Tirar acesso</button>}
-              </div>
-            )}
-        </section>
-
-        <section className="cartao">
-          <h2>Login e senha</h2>
-          <dl className="dados">
-            <dt>E-mail</dt><dd>{f.conta.confirmado_em ? `confirmado em ${fmtData(f.conta.confirmado_em)}` : 'não confirmado'}</dd>
-            {f.conta.email_novo && <><dt>Troca pendente</dt><dd>para {f.conta.email_novo}</dd></>}
-            <dt>Último acesso</dt><dd>{haQuanto(f.conta.ultimo_acesso)}</dd>
-            <dt>Aparelhos conectados</dt><dd>{f.conta.sessoes}</dd>
-            {bloqueada && <><dt>Bloqueio</dt><dd>bloqueada pelo suporte</dd></>}
-          </dl>
-          <div className="acoes">
-            <button className="botao" onClick={() => setJanela('senha_email')}>Mandar e-mail de senha nova</button>
-            <button className="botao" onClick={() => setJanela('senha_link')}>Gerar link de senha nova</button>
-            {!f.conta.confirmado_em && <button className="botao" onClick={() => setJanela('reenviar_confirmacao')}>Reenviar confirmação</button>}
-            {!f.conta.confirmado_em && <button className="botao" onClick={() => setJanela('confirmar_email')}>Confirmar e-mail</button>}
-            {!f.conta.admin && <button className="botao" onClick={() => setJanela('trocar_email')}>Trocar e-mail</button>}
-            {f.conta.sessoes > 0 && <button className="botao" onClick={() => setJanela('encerrar_sessoes')}>Desconectar de todos os aparelhos</button>}
-            {bloqueada
-              ? <button className="botao" onClick={() => setJanela('desbloquear')}>Desbloquear conta</button>
-              : !f.conta.admin && <button className="botao perigo-leve" onClick={() => setJanela('bloquear')}>Bloquear conta</button>}
+      <section className="ficha-heroi" style={{ '--c': corDoTom(s.tom) } as React.CSSProperties}>
+        <div className="heroi-aurora" aria-hidden="true"><i /><i /></div>
+        <div className="heroi-quem">
+          <span className="avatar-heroi">{iniciais(nome || f.conta.email)}</span>
+          <div className="heroi-textos">
+            <h1>{nome || f.conta.email}</h1>
+            <p className="heroi-email">
+              {nome && <span>{f.conta.email}</span>}
+              <button type="button" className="copiar" onClick={() => void copiarEmail()} aria-label="Copiar e-mail">
+                <Icone nome={copiado ? 'check' : 'copiar'} tamanho={14} />{copiado ? 'Copiado' : 'Copiar e-mail'}
+              </button>
+            </p>
+            <div className="etiquetas">
+              <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
+              {bloqueada && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
+              {!f.conta.confirmado_em && <Etiqueta tom="amarelo">E-mail não confirmado</Etiqueta>}
+              {f.conta.admin && <Etiqueta tom="violeta">Administrador</Etiqueta>}
+            </div>
           </div>
-        </section>
+        </div>
+        <dl className="heroi-dados">
+          <div><dt><Icone nome="calendario" tamanho={15} />Cadastro</dt><dd>{fmtData(f.conta.criado_em)}<small>{haQuanto(f.conta.criado_em)}</small></dd></div>
+          <div><dt><Icone nome="relogio" tamanho={15} />Último acesso</dt><dd>{haQuanto(f.conta.ultimo_acesso)}<small>{f.conta.ultimo_acesso ? fmtDataHora(f.conta.ultimo_acesso) : 'nunca entrou'}</small></dd></div>
+          <div><dt><Icone nome="pessoa" tamanho={15} />Aparelhos</dt><dd>{f.conta.sessoes}<small>com login ativo</small></dd></div>
+          <div><dt><Icone nome="globo" tamanho={15} />Moeda</dt><dd>{f.perfil?.moeda ?? '—'}<small>{f.perfil?.onboarding_em ? 'fez as perguntas iniciais' : 'não terminou as perguntas'}</small></dd></div>
+        </dl>
+      </section>
 
-        {a?.stripe_customer_id && <CartaoStripe id={id} email={f.conta.email} aoMudar={carregar} avisar={avisar} />}
-
-        <section className="cartao">
-          <h2>Pagamentos</h2>
-          {f.pix_stripe.length === 0 && f.pagamentos.length === 0 && <p className="vazio">Nenhum Pix do site nem pagamento por fora.</p>}
-          <ul className="lista">
-            {f.pix_stripe.map((p) => (
-              <li key={p.sessao_id}>
-                <strong>{fmtDinheiro(p.valor, p.moeda)}</strong> Pix pelo site · {fmtData(p.pago_em)} · {p.dias} dias
-                {!p.creditado && <Etiqueta tom="vermelho">Não virou dias: devolver</Etiqueta>}
-              </li>
-            ))}
-            {f.pagamentos.map((p) => (
-              <li key={p.id}>
-                <strong>{fmtDinheiro(p.valor, p.moeda)}</strong> {FORMAS.find(([v]) => v === p.forma)?.[1] ?? p.forma} por fora · {fmtData(p.pago_em + 'T12:00:00')}
-                {p.observacao && <span className="lista-obs">{p.observacao}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <Anotacoes id={id} anotacoes={f.anotacoes} aoSalvar={() => { avisar('Anotação salva.'); carregar() }} />
-
-        <section className="cartao">
-          <h2>Erros desta conta</h2>
-          {f.erros.length === 0
-            ? <p className="vazio">Nenhum erro registrado.</p>
-            : (
-              <ul className="lista">
-                {f.erros.map((e) => (
-                  <li key={e.id}>
-                    <strong>{e.mensagem}</strong>
-                    <span className="lista-obs">{fmtDataHora(e.criado_em)}{e.onde && ` · ${e.onde}`}{e.versao && ` · versão ${e.versao}`}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-        </section>
-
-        <section className="cartao">
-          <h2>O que o suporte fez aqui</h2>
-          {f.registro.length === 0
-            ? <p className="vazio">Nada ainda.</p>
-            : (
-              <ul className="lista">
-                {f.registro.map((r) => (
-                  <li key={r.id}>
-                    <strong>{NOME_DA_ACAO[r.acao] ?? r.acao}</strong>
-                    <span className="lista-obs">{fmtDataHora(r.criado_em)} · {r.admin_email}{r.motivo && ` · "${r.motivo}"`}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-        </section>
+      <div ref={refAbas} className="abas-ficha" role="tablist" aria-label="Partes da ficha">
+        {lente && <span className="lente" aria-hidden="true" style={estiloLente(lente)} />}
+        {abas.map(([v, nomeAba, icone, n]) => (
+          <button key={v} type="button" role="tab" aria-selected={aba === v} className={`aba-ficha ${aba === v ? 'ativo' : ''}`} onClick={() => setAba(v)}>
+            <Icone nome={icone} tamanho={16} />{nomeAba}{n ? <b>{n}</b> : null}
+          </button>
+        ))}
       </div>
 
-      {!f.conta.admin && (
-        <section className="cartao zona-perigo">
-          <h2>Excluir conta</h2>
-          <p>Apaga o login e todos os dados da pessoa e cancela a cobrança no cartão. Não tem volta.</p>
-          <button className="botao perigo" onClick={() => setJanela('excluir')}>Excluir esta conta</button>
-        </section>
-      )}
+      <div key={aba} className="ficha-conteudo">
+        {aba === 'geral' && (
+          <>
+            <div className="grade-ficha">
+              <Acesso f={f} aoAbrir={setJanela} />
+              <Login f={f} bloqueada={bloqueada} aoAbrir={setJanela} />
+            </div>
+            {!f.conta.admin && (
+              <section className="cartao zona-perigo">
+                <span className="zona-icone"><Icone nome="lixeira" tamanho={20} /></span>
+                <div><h2>Excluir conta</h2><p>Apaga o login e todos os dados da pessoa e cancela a cobrança no cartão. Não tem volta.</p></div>
+                <button className="botao perigo" onClick={() => setJanela('excluir')}>Excluir esta conta</button>
+              </section>
+            )}
+          </>
+        )}
+        {aba === 'cartao' && temStripe && <CartaoStripe id={id} email={f.conta.email} aoMudar={carregar} avisar={avisar} />}
+        {aba === 'pagamentos' && <Pagamentos f={f} />}
+        {aba === 'suporte' && (
+          <div className="grade-ficha">
+            <Anotacoes id={id} anotacoes={f.anotacoes} aoSalvar={() => { avisar('Anotação salva.'); carregar() }} />
+            <Historico registro={f.registro} />
+          </div>
+        )}
+        {aba === 'erros' && <ErrosDaConta erros={f.erros} />}
+      </div>
 
       {janela === 'liberar' && <Liberar f={f} aoFechar={() => setJanela(null)} aoTerminar={terminar} />}
       {janela === 'teste' && <EstenderTeste f={f} aoFechar={() => setJanela(null)} aoTerminar={terminar} />}
@@ -302,11 +490,12 @@ function Liberar({ f, aoFechar, aoTerminar }: PropsJanela & { f: FichaDados }) {
         })
         return opcao === 'vitalicio' ? 'Acesso vitalício liberado.' : `Acesso liberado até ${fmtData(fim!.toISOString())}.`
       }}>
-        <fieldset className="opcoes">
+        <fieldset className="opcoes-azulejo">
           <legend>Por quanto tempo</legend>
-          {([['15', '15 dias'], ['30', '30 dias'], ['outro', 'Outra quantidade de dias'], ['ate', 'Até uma data'], ['vitalicio', 'Vitalício (para sempre)']] as const).map(([v, nome]) => (
-            <label key={v} className="opcao">
-              <input type="radio" name="tempo" checked={opcao === v} onChange={() => setOpcao(v)} /> {nome}
+          {([['15', '15 dias', 'calendario'], ['30', '30 dias', 'calendario'], ['outro', 'Outros dias', 'mais'], ['ate', 'Até uma data', 'relogio'], ['vitalicio', 'Vitalício', 'infinito']] as const).map(([v, nome, icone]) => (
+            <label key={v} className={`opcao-azulejo ${opcao === v ? 'ativo' : ''}`}>
+              <input type="radio" name="tempo" checked={opcao === v} onChange={() => setOpcao(v)} />
+              <Icone nome={icone} tamanho={20} /><span>{nome}</span>
             </label>
           ))}
         </fieldset>
@@ -444,7 +633,7 @@ function Anotacoes({ id, anotacoes, aoSalvar }: { id: string; anotacoes: FichaDa
   const [erro, setErro] = useState<string | null>(null)
   return (
     <section className="cartao">
-      <h2>Anotações do suporte</h2>
+      <header className="cartao-topo"><h2><Icone nome="lapis" tamanho={18} />Anotações do suporte</h2></header>
       <form className="anotar" onSubmit={async (e) => {
         e.preventDefault()
         if (!texto.trim()) return
@@ -460,18 +649,29 @@ function Anotacoes({ id, anotacoes, aoSalvar }: { id: string; anotacoes: FichaDa
         setSalvando(false)
       }}>
         <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} maxLength={2000}
-          placeholder="Ex.: falou comigo no WhatsApp, prometeu pagar dia 15" aria-label="Nova anotação" />
+          placeholder="Ex.: falou comigo no WhatsApp, prometeu pagar dia 15" aria-label="Nova anotação"
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) e.currentTarget.form?.requestSubmit() }} />
         {erro && <p className="aviso-erro" role="alert">{erro}</p>}
-        <button className="botao" disabled={salvando || !texto.trim()}>{salvando ? 'Salvando…' : 'Salvar anotação'}</button>
+        <div className="anotar-pe">
+          <small>{texto.length > 0 ? `${texto.length}/2000 · Ctrl+Enter salva` : 'Só o suporte vê'}</small>
+          <button className="botao principal" disabled={salvando || !texto.trim()}><Icone nome="enviar" tamanho={16} />{salvando ? 'Salvando…' : 'Salvar anotação'}</button>
+        </div>
       </form>
-      <ul className="lista">
-        {anotacoes.map((n) => (
-          <li key={n.id}>
-            <span className="anotacao-texto">{n.texto}</span>
-            <span className="lista-obs">{fmtDataHora(n.criado_em)}{n.admin_email && ` · ${n.admin_email}`}</span>
-          </li>
-        ))}
-      </ul>
+      {anotacoes.length === 0
+        ? <p className="vazio-bonito"><Icone nome="lapis" tamanho={20} />Nenhuma anotação ainda.</p>
+        : (
+          <ul className="baloes">
+            {anotacoes.map((n, i) => (
+              <li key={n.id} style={{ '--i': Math.min(i, 10) } as React.CSSProperties}>
+                <span className="avatar pequeno" aria-hidden="true">{iniciais(n.admin_email ?? '?')}</span>
+                <div className="balao">
+                  <p>{n.texto}</p>
+                  <small>{n.admin_email ? `${n.admin_email.split('@')[0]} · ` : ''}{haQuanto(n.criado_em)} · {fmtDataHora(n.criado_em)}</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
     </section>
   )
 }

@@ -4,6 +4,7 @@ import { fmtDinheiro, haQuanto, iniciais, inteiro, NOME_DA_ACAO } from '../lib/f
 import { GraficoArea, GraficoBarras, Mini, Rosca, type Fatia } from '../pecas/Graficos'
 import { Icone } from '../pecas/Icone'
 import { Numero } from '../pecas/Numero'
+import { Segmentado } from '../pecas/Segmentado'
 import { ErroNaTela } from '../ui'
 
 interface Dia { dia: string; cadastros: number; pix: number; por_fora: number; erros: number }
@@ -82,16 +83,6 @@ function Kpi({ cor, icone, rotulo, valor, formato, sub, delta, mini, href, alert
 type Aba = 'cadastros' | 'dinheiro' | 'erros'
 type Periodo = 30 | 90
 
-function Segmentado<T extends string | number>({ opcoes, valor, aoMudar, rotulo }: { opcoes: [T, string][]; valor: T; aoMudar: (v: T) => void; rotulo: string }) {
-  return (
-    <div className="segmentado" role="group" aria-label={rotulo}>
-      {opcoes.map(([v, nome]) => (
-        <button key={String(v)} type="button" className={valor === v ? 'ativo' : ''} aria-pressed={valor === v} onClick={() => aoMudar(v)}>{nome}</button>
-      ))}
-    </div>
-  )
-}
-
 /** Cadastros, dinheiro recebido e erros nos últimos 30 ou 90 dias, comparando com o período anterior quando dá. */
 function Movimento({ dias }: { dias: Dia[] }) {
   const [aba, setAba] = useState<Aba>('cadastros')
@@ -156,9 +147,9 @@ function Movimento({ dias }: { dias: Dia[] }) {
           </p>
         </div>
         <div className="controles">
-          <Segmentado rotulo="O que mostrar" valor={aba} aoMudar={setAba}
+          <Segmentado rotulo="O que mostrar" valor={aba} aoMudar={(v) => setAba(v)}
             opcoes={[['cadastros', 'Cadastros'], ['dinheiro', 'Recebido'], ['erros', 'Erros']]} />
-          <Segmentado rotulo="Período" valor={periodo} aoMudar={setPeriodo} opcoes={[[30, '30 dias'], [90, '90 dias']]} />
+          <Segmentado rotulo="Período" valor={periodo} aoMudar={(v) => setPeriodo(v)} opcoes={[[30, '30 dias'], [90, '90 dias']]} />
         </div>
       </header>
       {grafico}

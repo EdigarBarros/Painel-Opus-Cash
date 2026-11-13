@@ -106,3 +106,18 @@ export function iniciais(texto: string) {
 const fmtInteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
 /** 1234 → "1.234" (arredondado). */
 export const inteiro = (n: number) => fmtInteiro.format(Math.round(n))
+
+/** Cor de cada tom de etiqueta, para avatares, anéis e barras. */
+export const corDoTom = (tom: Tom) => ({
+  verde: 'var(--entrada)', azul: 'var(--caixa)', amarelo: 'var(--divida)', vermelho: 'var(--saida)', violeta: 'var(--violeta)', cinza: 'var(--cinza-grafico)',
+})[tom]
+
+/** Ícone de cada ação do registro (src/pecas/Icone.tsx). */
+export const ICONE_DA_ACAO: Record<string, string> = {
+  ver_ficha: 'olho', acesso_dias: 'calendario', acesso_ate: 'calendario', acesso_vitalicio: 'infinito', acesso_teste: 'ampulheta',
+  acesso_revogar: 'cadeado', anotar: 'lapis', senha_email: 'email', senha_link: 'copiar', reenviar_confirmacao: 'email',
+  confirmar_email: 'check', trocar_email: 'trocar', bloquear: 'cadeado', desbloquear: 'escudo', encerrar_sessoes: 'sair',
+  excluir: 'lixeira', erro_resolver: 'check', erro_reabrir: 'historico', incluir_admin: 'pessoa',
+  stripe_cancelar_fim: 'cartao', stripe_desfazer_cancelamento: 'desfazer', stripe_cancelar_agora: 'cartao', stripe_cobrar_de_novo: 'atualizar',
+  stripe_dias_gratis: 'estrela', stripe_reembolsar: 'desfazer', stripe_link_cartao: 'cartao',
+}

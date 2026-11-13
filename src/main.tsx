@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { iniciarIma } from './lib/ima'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/sora/wght.css'
 import '@fontsource/montserrat/latin-700.css'
@@ -11,3 +12,5 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+iniciarIma()

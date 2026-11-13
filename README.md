@@ -25,11 +25,18 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
   (cadastros, dinheiro recebido ou erros, em 30 ou 90 dias); rosca de como as contas estão divididas; quem pede atenção
   (cartão recusado, prazo ou teste vencendo em 7 dias); últimos cadastros; uso (entraram na semana e no mês, e-mail não
   confirmado, bloqueadas) e as últimas ações do suporte.
+- **Animações:** as mesmas do OpusCash: o tema novo se espalha como tinta a partir do clique, a pílula desliza até o
+  item escolhido (menu, abas, filtros, segmentados), os blocos sobem um depois do outro ao trocar de aba, os botões são
+  puxados de leve pelo cursor e respondem com mola, as janelas entram desembaçando e os avisos sobem com mola.
 - **Visual:** o mesmo do OpusCash (cores, fontes Inter/Sora/Montserrat servidas pelo próprio painel, ícones, número que
   conta). Barra lateral no computador e abas embaixo no celular. A conta fica no pé da lateral, com a aparência
   (escuro, claro ou automático, guardada só neste navegador) e o botão de sair.
-- **Contas:** busca por e-mail ou nome, filtros (em teste, vence em 7 dias, cartão, liberados, sem acesso, com problema).
-- **Ficha da conta:**
+- **Contas:** busca por e-mail ou nome (atalho `/`), filtros com contagem (em teste, vence em 7 dias, cartão, liberados,
+  vitalícios, sem acesso, com problema), ordem (mais novas, último acesso, vence primeiro, nome) e vista em lista ou
+  cartões. Cada conta mostra a situação, quantos dias faltam e se entrou hoje (bolinha verde) ou na semana (amarela).
+- **Ficha da conta:** cabeçalho com a pessoa (cadastro, último acesso, aparelhos, moeda, copiar e-mail) e abas: visão
+  geral (acesso com o anel de dias que faltam, login e senha), cartão e Stripe (o cartão salvo desenhado), pagamentos,
+  anotações e histórico, erros. O que dá para fazer:
   - *Acesso:* liberar 15/30/N dias ou até uma data (status `pix`, o mesmo do Pix de 30 dias do site: soma ao que sobrou),
     vitalício (`cortesia`), estender o teste, tirar o acesso. Pode registrar o pagamento recebido (valor, forma, data).
     Conta que paga no cartão: o acesso vem do Stripe e se mexe pelo quadro do Stripe (abaixo).

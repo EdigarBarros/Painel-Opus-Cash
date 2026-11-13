@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, mensagemDe } from '../lib/api'
-import { fmtData, haQuanto, situacao } from '../lib/formato'
-import { Carregando, ErroNaTela, Etiqueta } from '../ui'
+import { corDoTom, fmtData, haQuanto, iniciais, situacao } from '../lib/formato'
+import { estiloLente, useLente } from '../lib/useLente'
+import { Icone } from '../pecas/Icone'
+import { Segmentado } from '../pecas/Segmentado'
+import { ErroNaTela, Etiqueta } from '../ui'
 
 export interface ContaResumo {
   id: string; email: string; nome: string | null; criado_em: string; ultimo_acesso: string | null
@@ -9,24 +12,27 @@ export interface ContaResumo {
 }
 
 const FILTROS = [
-  { id: 'todos', nome: 'Todas' },
-  { id: 'teste', nome: 'Em teste' },
-  { id: 'teste_vence', nome: 'Teste vence em 7 dias' },
-  { id: 'pagantes', nome: 'Cartão' },
-  { id: 'liberados', nome: 'Liberados por prazo' },
-  { id: 'vitalicio', nome: 'Vitalícios' },
-  { id: 'sem_acesso', nome: 'Sem acesso' },
-  { id: 'problemas', nome: 'Com problema' },
+  { id: 'todos', nome: 'Todas', cor: 'var(--texto-2)' },
+  { id: 'teste', nome: 'Em teste', cor: 'var(--indigo)' },
+  { id: 'teste_vence', nome: 'Teste vence em 7 dias', cor: 'var(--caixa)' },
+  { id: 'pagantes', nome: 'Cartão', cor: 'var(--entrada)' },
+  { id: 'liberados', nome: 'Liberados por prazo', cor: 'var(--destaque)' },
+  { id: 'vitalicio', nome: 'Vitalícios', cor: 'var(--violeta)' },
+  { id: 'sem_acesso', nome: 'Sem acesso', cor: 'var(--cinza-grafico)' },
+  { id: 'problemas', nome: 'Com problema', cor: 'var(--saida)' },
 ] as const
 type Filtro = (typeof FILTROS)[number]['id']
+type Ordem = 'novas' | 'acesso' | 'vence' | 'nome'
+type Vista = 'lista' | 'cartoes'
 
-const vale = (iso: string | null, dias = 0) => Boolean(iso && new Date(iso).getTime() > Date.now() - dias)
+const DIA = 86_400_000
+const vale = (iso: string | null) => Boolean(iso && new Date(iso).getTime() > Date.now())
 function passa(c: ContaResumo, f: Filtro) {
   const emTeste = c.status === 'teste' && vale(c.teste_fim)
   const liberado = c.status === 'pix' && vale(c.periodo_fim)
   switch (f) {
     case 'teste': return emTeste
-    case 'teste_vence': return emTeste && new Date(c.teste_fim!).getTime() < Date.now() + 7 * 86_400_000
+    case 'teste_vence': return emTeste && new Date(c.teste_fim!).getTime() < Date.now() + 7 * DIA
     case 'pagantes': return ['trialing', 'active', 'past_due'].includes(c.status)
     case 'liberados': return liberado
     case 'vitalicio': return c.status === 'cortesia'
@@ -36,12 +42,74 @@ function passa(c: ContaResumo, f: Filtro) {
   }
 }
 
+/** Fim do acesso que acaba sozinho (teste ou prazo), para a barrinha de "faltam N dias". */
+function fimDoAcesso(c: ContaResumo) {
+  if (c.status === 'teste' && vale(c.teste_fim)) return c.teste_fim
+  if (c.status === 'pix' && vale(c.periodo_fim)) return c.periodo_fim
+  return null
+}
+
+/** Bolinha de presença: verde entrou hoje, amarela na semana, apagada faz tempo. */
+function presenca(iso: string | null) {
+  if (!iso) return 'nunca'
+  const h = (Date.now() - new Date(iso).getTime()) / 3_600_000
+  return h < 24 ? 'hoje' : h < 24 * 7 ? 'semana' : 'antes'
+}
+
+const diasAte = (iso: string) => Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / DIA))
+
+function Prazo({ fim }: { fim: string }) {
+  const dias = diasAte(fim)
+  const pct = Math.min(100, (dias / 30) * 100)
+  const cor = dias <= 2 ? 'var(--saida)' : dias <= 7 ? 'var(--divida)' : 'var(--destaque)'
+  return (
+    <span className="prazo" title={`Até ${fmtData(fim)}`}>
+      <span className="prazo-barra"><i style={{ width: `${Math.max(4, pct)}%`, background: cor }} /></span>
+      <small>{dias === 0 ? 'acaba hoje' : dias === 1 ? 'falta 1 dia' : `faltam ${dias} dias`}</small>
+    </span>
+  )
+}
+
+function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }) {
+  const s = situacao(c.status, c.teste_fim, c.periodo_fim)
+  const fim = fimDoAcesso(c)
+  const p = presenca(c.ultimo_acesso)
+  return (
+    <a href={`#/contas/${c.id}`} className={vista === 'lista' ? 'linha-conta' : 'cartao-conta'} style={{ '--c': corDoTom(s.tom), '--i': Math.min(i, 14) } as React.CSSProperties}>
+      <span className="avatar-anel"><span className="avatar">{iniciais(c.nome || c.email)}</span><i className={`presenca ${p}`} title={`Último acesso: ${haQuanto(c.ultimo_acesso)}`} /></span>
+      <span className="conta-ident">
+        <span className="conta-titulo">{c.nome || c.email}</span>
+        <span className="conta-sub">{c.nome ? c.email : `Chegou ${haQuanto(c.criado_em)}`}</span>
+      </span>
+      <span className="conta-situacao">
+        <span className="etiquetas">
+          <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
+          {c.bloqueado && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
+          {!c.confirmado && <Etiqueta tom="amarelo">E-mail não confirmado</Etiqueta>}
+        </span>
+        {fim && <Prazo fim={fim} />}
+      </span>
+      <span className="conta-datas">
+        <span><Icone nome="calendario" tamanho={14} />{fmtData(c.criado_em)}</span>
+        <span><Icone nome="relogio" tamanho={14} />{haQuanto(c.ultimo_acesso)}</span>
+      </span>
+      <span className="conta-seta"><Icone nome="dir" tamanho={18} /></span>
+    </a>
+  )
+}
+
 export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string | null; buscaInicial?: string | null }) {
   const [termo, setTermo] = useState(buscaInicial ?? '')
   const [buscado, setBuscado] = useState((buscaInicial ?? '').trim())
   const [contas, setContas] = useState<ContaResumo[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [buscando, setBuscando] = useState(false)
   const [filtro, setFiltro] = useState<Filtro>(FILTROS.some((f) => f.id === filtroInicial) ? filtroInicial as Filtro : 'todos')
+  const [ordem, setOrdem] = useState<Ordem>('novas')
+  const [vista, setVista] = useState<Vista>(() => { try { return localStorage.getItem('painel-vista-contas') === 'cartoes' ? 'cartoes' : 'lista' } catch { return 'lista' } })
+  const campo = useRef<HTMLInputElement>(null)
+  const refFiltros = useRef<HTMLDivElement>(null)
+  const lente = useLente(refFiltros, 'button.ativo', `${filtro}|${contas?.length ?? 0}`)
 
   // busca no servidor 300 ms depois de parar de digitar
   useEffect(() => {
@@ -50,66 +118,109 @@ export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string
   }, [termo])
   useEffect(() => {
     let cancelado = false
+    const t = window.setTimeout(() => { if (!cancelado) setBuscando(true) }, 0)
     api<ContaResumo[]>('buscar', { termo: buscado })
       .then((d) => { if (!cancelado) { setContas(d); setErro(null) } })
       .catch((e) => { if (!cancelado) setErro(mensagemDe(e)) })
-    return () => { cancelado = true }
+      .finally(() => { if (!cancelado) setBuscando(false) })
+    return () => { cancelado = true; window.clearTimeout(t) }
   }, [buscado])
+  // "/" leva para a busca, como nos sites de busca
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      if (e.key === '/' && !(e.target as HTMLElement).closest('input, textarea, select')) { e.preventDefault(); campo.current?.focus() }
+    }
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  }, [])
 
-  const lista = useMemo(() => (contas ?? []).filter((c) => passa(c, filtro)), [contas, filtro])
+  const contagem = useMemo(() => Object.fromEntries(FILTROS.map((f) => [f.id, (contas ?? []).filter((c) => passa(c, f.id)).length])), [contas])
+  const lista = useMemo(() => {
+    const l = (contas ?? []).filter((c) => passa(c, filtro))
+    const t = (iso: string | null) => (iso ? new Date(iso).getTime() : 0)
+    switch (ordem) {
+      case 'acesso': return [...l].sort((a, b) => t(b.ultimo_acesso) - t(a.ultimo_acesso))
+      case 'vence': return [...l].sort((a, b) => (t(fimDoAcesso(a)) || Infinity) - (t(fimDoAcesso(b)) || Infinity))
+      case 'nome': return [...l].sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, 'pt-BR'))
+      default: return l
+    }
+  }, [contas, filtro, ordem])
+
+  const mudarVista = (v: Vista) => {
+    setVista(v)
+    try { localStorage.setItem('painel-vista-contas', v) } catch { /* sem armazenamento */ }
+  }
 
   return (
-    <div className="pagina">
-      <h1>Contas</h1>
-      <div className="busca">
-        <input type="search" placeholder="Buscar por e-mail ou nome" value={termo} onChange={(e) => setTermo(e.target.value)}
-          aria-label="Buscar por e-mail ou nome" autoFocus />
+    <div className="pagina contas">
+      <header className="pagina-topo">
+        <div>
+          <h1>Contas</h1>
+          <p className="sub">Ache uma conta pelo e-mail ou nome e abra a ficha para ajudar a pessoa.</p>
+        </div>
+        <Segmentado rotulo="Como mostrar" valor={vista} aoMudar={(v) => mudarVista(v)}
+          opcoes={[['lista', <><Icone nome="lista" tamanho={16} />Lista</>], ['cartoes', <><Icone nome="grade" tamanho={16} />Cartões</>]]} />
+      </header>
+
+      <div className="barra-busca">
+        <label className="busca-grande">
+          <Icone nome="busca" tamanho={20} />
+          <input ref={campo} type="search" placeholder="Buscar por e-mail ou nome" value={termo} onChange={(e) => setTermo(e.target.value)}
+            aria-label="Buscar por e-mail ou nome" autoFocus />
+          {buscando ? <span className="giro" aria-hidden="true" /> : termo ? (
+            <button type="button" className="limpar" onClick={() => { setTermo(''); campo.current?.focus() }} aria-label="Limpar busca"><Icone nome="fechar" tamanho={16} /></button>
+          ) : <kbd>/</kbd>}
+        </label>
       </div>
-      <div className="filtros" role="group" aria-label="Filtrar contas">
-        {FILTROS.map((f) => (
-          <button key={f.id} type="button" className={`filtro ${filtro === f.id ? 'ativo' : ''}`} aria-pressed={filtro === f.id}
-            onClick={() => setFiltro(f.id)}>{f.nome}</button>
-        ))}
+
+      <div className="filtros-faixa">
+        <div ref={refFiltros} className="filtros" role="group" aria-label="Filtrar contas">
+          {lente && <span className="filtro-lente" aria-hidden="true" style={estiloLente(lente)} />}
+          {FILTROS.map((f) => (
+            <button key={f.id} type="button" className={`filtro ${filtro === f.id ? 'ativo' : ''}`} aria-pressed={filtro === f.id}
+              style={{ '--c': f.cor } as React.CSSProperties} onClick={() => setFiltro(f.id)}>
+              {f.id !== 'todos' && <i className="marcador" />}{f.nome}
+              {contas && <b>{contagem[f.id]}</b>}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <div className="contas-barra">
+        <p className="contagem">
+          {contas ? <>{lista.length === 1 ? '1 conta' : `${lista.length} contas`}{buscado && <> para <b>"{buscado}"</b></>}</> : 'Carregando…'}
+        </p>
+        <label className="ordem">
+          <Icone nome="trocar" tamanho={15} />
+          <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} aria-label="Ordenar">
+            <option value="novas">Mais novas primeiro</option>
+            <option value="acesso">Último acesso</option>
+            <option value="vence">Acesso que vence primeiro</option>
+            <option value="nome">Nome (A a Z)</option>
+          </select>
+        </label>
+      </div>
+
       {erro && <ErroNaTela erro={erro} />}
-      {!erro && !contas && <Carregando />}
-      {contas && (
-        <>
-          <p className="contagem">{lista.length === 1 ? '1 conta' : `${lista.length} contas`}{buscado && ` para "${buscado}"`}</p>
-          {lista.length === 0
-            ? <p className="vazio">Nenhuma conta aqui.</p>
-            : (
-              <div className="tabela-rolagem">
-                <table className="tabela">
-                  <thead>
-                    <tr><th>Conta</th><th>Situação</th><th>Cadastro</th><th>Último acesso</th></tr>
-                  </thead>
-                  <tbody>
-                    {lista.map((c) => {
-                      const s = situacao(c.status, c.teste_fim, c.periodo_fim)
-                      return (
-                        <tr key={c.id} onClick={() => { location.hash = `#/contas/${c.id}` }}>
-                          <td>
-                            <a href={`#/contas/${c.id}`} className="conta-link">{c.email}</a>
-                            {c.nome && <span className="conta-nome">{c.nome}</span>}
-                          </td>
-                          <td>
-                            <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
-                            {c.bloqueado && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
-                            {!c.confirmado && <Etiqueta tom="amarelo">E-mail não confirmado</Etiqueta>}
-                          </td>
-                          <td>{fmtData(c.criado_em)}</td>
-                          <td>{haQuanto(c.ultimo_acesso)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          {contas.length >= 100 && <p className="nota">Mostrando as 100 mais recentes. Busque pelo e-mail para achar outras.</p>}
-        </>
+      {!erro && !contas && (
+        <div className={vista === 'lista' ? 'lista-contas' : 'grade-contas'}>
+          {Array.from({ length: 6 }, (_, i) => <div key={i} className="esqueleto" style={{ height: vista === 'lista' ? 72 : 190 }} />)}
+        </div>
       )}
+      {contas && lista.length === 0 && (
+        <div className="vazio-grande">
+          <span className="vazio-icone"><Icone nome="busca" tamanho={30} /></span>
+          <strong>Nenhuma conta aqui</strong>
+          <p>{buscado ? 'Confira o e-mail ou tente só um pedaço dele.' : 'Nenhuma conta neste filtro agora.'}</p>
+          {filtro !== 'todos' && <button className="botao" onClick={() => setFiltro('todos')}>Ver todas</button>}
+        </div>
+      )}
+      {contas && lista.length > 0 && (
+        <div key={`${filtro}-${ordem}-${vista}-${buscado}`} className={vista === 'lista' ? 'lista-contas' : 'grade-contas'}>
+          {lista.map((c, i) => <LinhaConta key={c.id} c={c} i={i} vista={vista} />)}
+        </div>
+      )}
+      {contas && contas.length >= 100 && <p className="nota">Mostrando as 100 mais recentes. Busque pelo e-mail para achar outras.</p>}
     </div>
   )
 }

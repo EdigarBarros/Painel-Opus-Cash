@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, mensagemDe } from '../lib/api'
 import { fmtData, fmtDataHora, fmtDinheiro } from '../lib/formato'
+import { Icone } from '../pecas/Icone'
 import { CampoMotivo, Carregando, Etiqueta, FormularioDeAcao, Modal } from '../ui'
 
 type Cartao = { bandeira: string; final: string; validade: string } | null
@@ -29,6 +30,45 @@ const SITUACAO: Record<string, [string, 'verde' | 'azul' | 'amarelo' | 'vermelho
 }
 const BANDEIRA: Record<string, string> = { visa: 'Visa', mastercard: 'Mastercard', amex: 'Amex', elo: 'Elo', hipercard: 'Hipercard', diners: 'Diners' }
 const nomeCartao = (c: Cartao) => (c ? `${BANDEIRA[c.bandeira] ?? c.bandeira} •••• ${c.final} (vence ${c.validade})` : 'nenhum cartão salvo')
+const COR_BANDEIRA: Record<string, string> = { visa: '#1a3fd6', mastercard: '#d9480f', amex: '#0f7ac2', elo: '#222a3a', hipercard: '#b3141b', diners: '#3a4a63' }
+
+/** Chip dourado do cartão (o mesmo do CartaoIlustrado do OpusCash). */
+function Chip() {
+  return (
+    <svg className="cc-chip" width={38} height={29} viewBox="0 0 38 29" aria-hidden="true">
+      <defs>
+        <linearGradient id="cc-ouro" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fbe7a6" /><stop offset=".5" stopColor="#d6ad4f" /><stop offset="1" stopColor="#f2d589" />
+        </linearGradient>
+      </defs>
+      <rect x=".5" y=".5" width="37" height="28" rx="6" fill="url(#cc-ouro)" stroke="rgba(120,85,20,.45)" />
+      <path d="M13 .5v28M25 .5v28M.5 10h12.5M25 10h12.5M.5 19h12.5M25 19h12.5M13 14.5h12" stroke="rgba(120,85,20,.5)" fill="none" />
+    </svg>
+  )
+}
+
+/** O cartão salvo desenhado como um cartão de verdade, que inclina de leve seguindo o mouse. */
+function Plastico({ cartao, email }: { cartao: Cartao; email: string }) {
+  const cor = cartao ? COR_BANDEIRA[cartao.bandeira] ?? '#334155' : '#475569'
+  const mexer = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height
+    e.currentTarget.style.setProperty('--ry', `${(x - 0.5) * 14}deg`)
+    e.currentTarget.style.setProperty('--rx', `${(0.5 - y) * 12}deg`)
+    e.currentTarget.style.setProperty('--mx', `${x * 100}%`)
+    e.currentTarget.style.setProperty('--my', `${y * 100}%`)
+  }
+  const soltar = (e: React.PointerEvent<HTMLDivElement>) => { ['--rx', '--ry', '--mx', '--my'].forEach((v) => e.currentTarget.style.removeProperty(v)) }
+  return (
+    <div className="cc-plastico" style={{ '--c': cor } as React.CSSProperties} onPointerMove={mexer} onPointerLeave={soltar} aria-label={nomeCartao(cartao)}>
+      <span className="cc-brilho" aria-hidden="true" />
+      <div className="cc-plastico-topo"><strong>{cartao ? BANDEIRA[cartao.bandeira] ?? cartao.bandeira : 'Sem cartão'}</strong><span className="cc-tipo">crédito</span></div>
+      <div className="cc-plastico-meio"><Chip /><span className="cc-numero">•••• •••• •••• {cartao?.final ?? '••••'}</span></div>
+      <div className="cc-plastico-pe"><span className="cc-plastico-rodape">{email}</span><span className="cc-plastico-rodape">{cartao ? `vence ${cartao.validade}` : ''}</span></div>
+    </div>
+  )
+}
+
 const VIVA = ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused']
 
 type Janela =
@@ -66,10 +106,10 @@ export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email
   const aberta = d?.faturas?.find((f) => f.status === 'open') ?? null
 
   return (
-    <section className="cartao largura-toda">
+    <section className="cartao stripe">
       <header className="cartao-topo">
-        <h2>Stripe (cartão e Pix do site)</h2>
-        {painelStripe && <a href={painelStripe} target="_blank" rel="noreferrer">Abrir no Stripe</a>}
+        <h2><Icone nome="cartao" tamanho={18} />Stripe (cartão e Pix do site)</h2>
+        {painelStripe && <a className="ver-mais pequeno" href={painelStripe} target="_blank" rel="noreferrer">Abrir no Stripe<Icone nome="exportar" tamanho={15} /></a>}
       </header>
       {erro && <p className="aviso-erro" role="alert">{erro} <button className="link" onClick={carregar}>Tentar de novo</button></p>}
       {!erro && !d && <Carregando texto="Lendo o Stripe…" />}
@@ -77,7 +117,8 @@ export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email
       {d?.cliente && (
         <>
           <div className="grade-stripe">
-            <div>
+            <div className="stripe-assinatura">
+              <Plastico cartao={s?.cartao ?? d.cliente.cartao} email={email} />
               <h3>Assinatura no cartão</h3>
               {!s
                 ? <p className="vazio">Nunca assinou no cartão.</p>
@@ -97,7 +138,7 @@ export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email
             </div>
             {aberta && (
               <div className="fatura-aberta">
-                <h3>Fatura em aberto</h3>
+                <h3><Icone nome="alerta" tamanho={16} />Fatura em aberto</h3>
                 <dl className="dados">
                   <dt>Valor</dt><dd><strong>{fmtDinheiro(aberta.valor, aberta.moeda)}</strong></dd>
                   <dt>Criada em</dt><dd>{fmtData(aberta.criada)}</dd>
@@ -125,19 +166,22 @@ export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email
           {!d.cobrancas?.length
             ? <p className="vazio">Nenhuma cobrança ainda.</p>
             : (
-              <ul className="lista">
-                {d.cobrancas.map((c) => {
+              <ul className="lista-movimentos">
+                {d.cobrancas.map((c, i) => {
                   const total = c.reembolsado >= c.valor && c.valor > 0
                   const forma = c.tipo === 'pix' ? 'Pix' : c.final ? `${BANDEIRA[c.bandeira ?? ''] ?? 'Cartão'} •••• ${c.final}` : (c.tipo ?? '—')
+                  const estado = c.status === 'failed' ? 'recusada' : c.status === 'pending' ? 'aguardando' : total || c.reembolsado > 0 ? 'reembolsada' : 'paga'
                   return (
-                    <li key={c.id} className="cobranca">
-                      <span>
-                        <strong>{fmtDinheiro(c.valor, c.moeda)}</strong> · {forma} · {fmtDataHora(c.criada)}
-                        <span className="lista-obs">
-                          {c.status === 'failed' ? `Recusada${c.falha ? `: ${c.falha}` : ''}` : c.status === 'pending' ? 'Aguardando' : total ? 'Reembolsada' : c.reembolsado > 0 ? `Paga, ${fmtDinheiro(c.reembolsado, c.moeda)} reembolsado` : 'Paga'}
+                    <li key={c.id} className={`cobranca ${estado}`} style={{ '--i': Math.min(i, 12) } as React.CSSProperties}>
+                      <span className="mov-icone"><Icone nome={estado === 'recusada' ? 'fechar' : estado === 'aguardando' ? 'relogio' : estado === 'reembolsada' ? 'desfazer' : 'check'} tamanho={17} /></span>
+                      <span className="mov-texto">
+                        <b>{forma}</b>
+                        <small>
+                          {fmtDataHora(c.criada)} · {c.status === 'failed' ? `Recusada${c.falha ? `: ${c.falha}` : ''}` : c.status === 'pending' ? 'Aguardando' : total ? 'Reembolsada' : c.reembolsado > 0 ? `Paga, ${fmtDinheiro(c.reembolsado, c.moeda)} reembolsado` : 'Paga'}
                           {c.recibo && <> · <a href={c.recibo} target="_blank" rel="noreferrer">recibo</a></>}
-                        </span>
+                        </small>
                       </span>
+                      <strong className="mov-valor">{fmtDinheiro(c.valor, c.moeda)}</strong>
                       {c.status === 'succeeded' && !total && (
                         <button className="botao pequeno perigo-leve" onClick={() => setJanela({ tipo: 'reembolsar', cobranca: c.id, valor: fmtDinheiro(c.valor - c.reembolsado, c.moeda) })}>Reembolsar</button>
                       )}

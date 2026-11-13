@@ -1,7 +1,8 @@
 import type { Session } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, mensagemDe, ouvirPerdaDeAcesso } from './lib/api'
 import { supabase } from './lib/supabase'
+import { estiloLente, useLente } from './lib/useLente'
 import { Codigo } from './telas/Codigo'
 import { Contas } from './telas/Contas'
 import { Entrar } from './telas/Entrar'
@@ -118,11 +119,16 @@ const SECOES = [
 function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
   const { partes, params } = useRota()
   const secao = partes[0] ?? 'inicio'
+  const refNav = useRef<HTMLElement>(null)
+  const refAbas = useRef<HTMLElement>(null)
+  const lenteNav = useLente(refNav, 'a.ativo', secao)
+  const lenteAbas = useLente(refAbas, 'a.ativo', secao)
   return (
     <div className="app">
       <aside className="lateral">
         <a href="#/" className="lateral-marca" aria-label="Início do painel"><Marca /></a>
-        <nav aria-label="Seções">
+        <nav ref={refNav} aria-label="Seções">
+          {lenteNav && <span className="lente" aria-hidden="true" style={estiloLente(lenteNav)} />}
           {SECOES.map((s) => (
             <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
               <Icone nome={s.icone} />{s.nome}
@@ -133,7 +139,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
           <Conta email={email} aoSair={aoSair} lado="cima" />
         </div>
       </aside>
-      <div className="principal">
+      <div className="area-principal">
         <header className="barra-movel">
           <a href="#/" aria-label="Início do painel"><Marca /></a>
           <Conta email={email} aoSair={aoSair} lado="baixo" compacta />
@@ -146,7 +152,8 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
             : <Inicio />}
         </main>
       </div>
-      <nav className="abas-movel" aria-label="Seções">
+      <nav ref={refAbas} className="abas-movel" aria-label="Seções">
+        {lenteAbas && <span className="lente" aria-hidden="true" style={estiloLente(lenteAbas)} />}
         {SECOES.map((s) => (
           <a key={s.id} href={s.href} className={secao === s.id ? 'ativo' : ''} aria-current={secao === s.id ? 'page' : undefined}>
             <Icone nome={s.icone} tamanho={22} /><span>{s.nome}</span>

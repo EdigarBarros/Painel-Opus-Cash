@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { mensagemDe } from '../lib/api'
 import { supabase } from '../lib/supabase'
+import { Marca } from '../pecas/Marca'
 import { Carregando } from '../ui'
 
 type Etapa =
@@ -61,7 +62,7 @@ export function Codigo({ email, aoConfirmar, aoSair }: { email: string; aoConfir
   return (
     <main className="entrada">
       <div className="cartao-entrada">
-        <img src="/simbolo.webp" alt="" className="simbolo" width={48} height={48} />
+        <div className="entrada-marca"><Marca grande /></div>
         {etapa.tipo === 'carregando' && <Carregando />}
         {etapa.tipo === 'erro' && <p className="aviso-erro" role="alert">{etapa.msg}</p>}
         {etapa.tipo === 'cadastrar' && (

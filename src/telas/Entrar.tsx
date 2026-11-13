@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { Marca } from '../pecas/Marca'
 
 export function Entrar({ aviso }: { aviso?: string | null }) {
   const [email, setEmail] = useState('')
@@ -19,8 +20,8 @@ export function Entrar({ aviso }: { aviso?: string | null }) {
           setEntrando(false)
         }
       }}>
-        <img src="/simbolo.webp" alt="" className="simbolo" width={48} height={48} />
-        <h1>Painel OpusCash</h1>
+        <div className="entrada-marca"><Marca grande /></div>
+        <h1>Entrar no painel</h1>
         <p className="sub">Acesso restrito à equipe de suporte. Use a mesma conta do OpusCash.</p>
         {aviso && <p className="aviso-erro" role="alert">{aviso}</p>}
         <label className="campo">

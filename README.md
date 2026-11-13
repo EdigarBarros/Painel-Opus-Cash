@@ -48,9 +48,13 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
     link da fatura em aberto, gerar link para trocar o cartão, dar dias grátis no cartão e reembolsar uma cobrança.
     Depois de cada ação a ficha já mostra o estado novo (o stripe-webhook do OpusCash confirma logo em seguida).
   - Pagamentos, anotações do suporte, erros da conta, histórico do suporte e excluir a conta (cancela o cartão no Stripe).
-- **Erros:** os erros de `erros_app` agrupados pela mensagem, com vezes, pessoas, versões e onde; marcar como resolvido
-  (avisa se voltou a acontecer).
-- **Registro:** tudo o que o suporte fez.
+- **Erros:** os erros de `erros_app` agrupados pela mensagem. Números do período (abertos, voltaram, vezes,
+  resolvidos), gráfico de erros por dia, filtro (abertos, resolvidos, todos) e busca. Cada erro abre uma gaveta com a
+  primeira e a última vez, as últimas ocorrências (com a conta e o detalhe técnico, que dá para copiar) e o botão de
+  marcar como resolvido (avisa se voltou a acontecer).
+- **Registro:** tudo o que o suporte fez, em linha do tempo agrupada por dia, com ícone e cor por tipo de ação.
+  Números da semana (ações, equipe, contas atendidas), gráfico de ações por dia, filtro por tipo e busca por conta,
+  quem fez ou motivo.
 
 ## Colocar no ar
 

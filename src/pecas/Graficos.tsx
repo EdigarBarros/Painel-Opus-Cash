@@ -25,7 +25,9 @@ function topoBonito(max: number) {
   const p = Math.pow(10, Math.floor(Math.log10(max)))
   const passo = [1, 2, 2.5, 5, 10].find((m) => m * p >= max) ?? 10
   const topo = passo * p
-  return topo < 4 && Number.isInteger(max) ? 4 : topo
+  if (topo < 4 && Number.isInteger(max)) return 4
+  // contagens pequenas: o meio do eixo também tem de ser inteiro (5 viraria 2,5 e apareceria "3")
+  return Number.isInteger(max) && topo < 20 && topo % 2 ? topo + 1 : topo
 }
 
 /** Curva monótona (Fritsch–Carlson): suave, sem passar abaixo de zero nem inventar picos entre os pontos. */

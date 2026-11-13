@@ -1,0 +1,80 @@
+/* Arte da novidade (ArteNovidade.tsx). O mesmo arquivo vai para o painel de suporte (src/pecas/arte.css). */
+
+.arte { position: relative; overflow: hidden; isolation: isolate; color: #fff; font-family: var(--fonte); user-select: none; -webkit-user-select: none; }
+.arte-ajustada { position: relative; width: 100%; overflow: hidden; }
+
+/* fundos */
+.arte > i { position: absolute; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(60px); }
+.arte-fundo-a { width: 70%; aspect-ratio: 1; right: -18%; top: -28%; }
+.arte-fundo-b { width: 60%; aspect-ratio: 1; left: -20%; bottom: -30%; }
+.arte::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+.arte.fundo-noite { background: linear-gradient(160deg, #0b1226, #070b16 60%, #0a1324); }
+.arte.fundo-noite::before { background-image: radial-gradient(rgba(255, 255, 255, .07) 1px, transparent 1.2px); background-size: 18px 18px; }
+.arte.fundo-noite .arte-fundo-a { background: rgba(31, 142, 241, .28); }
+.arte.fundo-noite .arte-fundo-b { background: rgba(20, 201, 160, .16); }
+
+.arte.fundo-aurora { background: #080c1c; }
+.arte.fundo-aurora .arte-fundo-a { background: rgba(139, 92, 246, .55); }
+.arte.fundo-aurora .arte-fundo-b { background: rgba(31, 209, 160, .45); }
+
+.arte.fundo-marca { background: linear-gradient(140deg, #3d4be0, #1f8ef1 52%, #14c9a0); }
+.arte.fundo-marca::before { background-image: radial-gradient(rgba(255, 255, 255, .12) 1px, transparent 1.2px); background-size: 18px 18px; }
+.arte.fundo-marca .arte-fundo-a { background: rgba(255, 255, 255, .22); }
+
+.arte.fundo-violeta { background: linear-gradient(150deg, #2a1065, #5b21b6 55%, #7c3aed); }
+.arte.fundo-violeta .arte-fundo-a { background: rgba(244, 63, 94, .35); }
+.arte.fundo-violeta .arte-fundo-b { background: rgba(34, 211, 238, .25); }
+
+.arte.fundo-verde { background: linear-gradient(150deg, #052e26, #065f46 55%, #0f9f7a); }
+.arte.fundo-verde .arte-fundo-a { background: rgba(31, 209, 160, .4); }
+
+.arte.fundo-claro { background: linear-gradient(160deg, #f5f8ff, #e8eefb); color: #0b1020; }
+.arte.fundo-claro::before { background-image: radial-gradient(rgba(11, 16, 32, .07) 1px, transparent 1.2px); background-size: 18px 18px; }
+.arte.fundo-claro .arte-fundo-a { background: rgba(31, 142, 241, .2); }
+.arte.fundo-claro .arte-fundo-b { background: rgba(20, 201, 160, .18); }
+
+/* caixa de cada elemento */
+.arte-el { position: absolute; display: grid; }
+.arte-el > * { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.arte-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.arte-texto { line-height: 1.12; letter-spacing: -.02em; white-space: pre-wrap; overflow-wrap: anywhere; display: block; height: auto !important; }
+.arte-texto.destaque {
+  background: linear-gradient(90deg, #3d4be0, #1f8ef1 52%, #14c9a0); -webkit-background-clip: text; background-clip: text; color: transparent !important;
+}
+
+.arte-marca { display: flex; align-items: center; gap: .4em; font-family: var(--fonte-marca); font-weight: 800; letter-spacing: .03em; line-height: 1; white-space: nowrap; }
+.arte-marca img { height: 1.25em; width: auto; }
+.arte-marca span { color: #fff; }
+.arte.fundo-claro .arte-marca span { color: #0b1020; }
+.arte-marca b { color: #1fd1a0; font-weight: 800; }
+.arte-simbolo { object-fit: contain; }
+
+.arte-painel {
+  display: grid; align-content: start; gap: 6%; padding: 7% 7% 0; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(160deg, rgba(30, 40, 66, .92), rgba(14, 20, 36, .92)); border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .7);
+}
+.arte-painel-linha { display: block; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, .16); }
+.arte-painel-linha.forte { height: 10px; background: rgba(255, 255, 255, .55); }
+.arte-grafico { height: auto; flex: 1; align-self: end; }
+.arte-painel .arte-grafico { height: 100%; min-height: 0; }
+
+.arte-selo {
+  display: flex; align-items: center; justify-content: center; gap: .35em; padding: 0 .9em; border-radius: 999px; font-weight: 800;
+  color: var(--c); background: rgba(8, 14, 30, .72); border: 1.5px solid color-mix(in srgb, var(--c) 60%, transparent);
+  white-space: nowrap; overflow: hidden;
+}
+.arte-botao {
+  display: flex; align-items: center; justify-content: center; padding: 0 1em; border-radius: 999px; font-weight: 800; white-space: nowrap;
+  color: #04261d; background: var(--c); box-shadow: 0 0 28px -4px color-mix(in srgb, var(--c) 70%, transparent);
+}
+.arte-icone {
+  display: grid; place-items: center; border-radius: 28%; color: #fff;
+  background: linear-gradient(140deg, var(--c), color-mix(in srgb, var(--c) 55%, #0b1020));
+  box-shadow: 0 16px 34px -16px var(--c), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.arte-forma { background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); }
+.arte-forma.contorno { background: transparent; border: 2px solid var(--c); }
+.arte-brilho { border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent); opacity: .55; filter: blur(8px); }

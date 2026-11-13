@@ -4,8 +4,11 @@ import { useDados, useDemorou } from '../lib/dados'
 import { fmtDataHora, inteiro } from '../lib/formato'
 import { useAviso } from '../lib/useAviso'
 import { CartaoNovidade, CORES_NOVIDADE, type CorNovidade } from '../pecas/CartaoNovidade'
+import { ICONES } from '../lib/iconesDoApp'
 import { Icone } from '../pecas/Icone'
+import { ArteAjustada, TAMANHO, type Arte } from '../pecas/ArteNovidade'
 import { Segmentado } from '../pecas/Segmentado'
+import { arteInicial, EditorArte } from './EditorArte'
 import { ErroNaTela, Etiqueta, Modal } from '../ui'
 
 /*
@@ -17,13 +20,10 @@ type Texto = { pt: string; en?: string; es?: string }
 interface Novidade {
   id: number; titulo: Texto; itens: { icone: string; texto: Texto }[]; icone: string; cor: CorNovidade; tela: string | null
   onde: 'todos' | 'site' | 'app'; publicada_em: string | null; criada_em: string; atualizada_em: string; vistas: number; publico: number
+  /** arte livre montada no editor (migração 32 do OpusCash); null = cartão simples */
+  arte?: Arte | null
 }
-type Rascunho = Pick<Novidade, 'titulo' | 'itens' | 'icone' | 'cor' | 'tela' | 'onde'>
-
-/** Ícones do OpusCash que dá para usar (os mesmos nomes do app). */
-const ICONES = ['estrela', 'ideia', 'pessoa', 'email', 'sino', 'calendario', 'cartao', 'carteira', 'investir', 'meta', 'bussola',
-  'escudo', 'cofre', 'relatorio', 'globo', 'camera', 'lapis', 'acordo', 'relogio', 'engrenagem', 'ajustes', 'olho', 'trocar',
-  'importar', 'exportar', 'receber', 'enviar', 'lista', 'ano', 'inicio', 'divida', 'check', 'historico', 'busca', 'sol', 'lua']
+type Rascunho = Pick<Novidade, 'titulo' | 'itens' | 'icone' | 'cor' | 'tela' | 'onde' | 'arte'>
 
 const NOME_DA_COR: Record<CorNovidade, string> = { marca: 'OpusCash', verde: 'Verde', azul: 'Azul', violeta: 'Violeta', amarelo: 'Amarelo', rosa: 'Rosa' }
 const FUNDO_DA_COR: Record<CorNovidade, string> = {
@@ -41,9 +41,26 @@ const TELAS: [string, string][] = [
 const ONDE: [Novidade['onde'], string][] = [['todos', 'Site e app'], ['site', 'Só no site'], ['app', 'Só no app']]
 
 const ROTULOS = { selo: 'Novidade', ver: 'Ver agora', ok: 'Legal!', depois: 'Depois', fechar: 'Fechar' }
-const NOVA: Rascunho = { titulo: { pt: '' }, itens: [{ icone: 'estrela', texto: { pt: '' } }], icone: 'estrela', cor: 'marca', tela: null, onde: 'todos' }
+const NOVA = (): Rascunho => ({ titulo: { pt: '' }, itens: [{ icone: 'estrela', texto: { pt: '' } }], icone: 'estrela', cor: 'marca', tela: null, onde: 'todos', arte: arteInicial() })
+
+/** O pop-up com a arte, como a pessoa vê (a arte em cima, os botões embaixo). */
+function PopupDeArte({ arte, temBotaoVer, largura }: { arte: Arte; temBotaoVer: boolean; largura?: number }) {
+  return (
+    <div className="novidade novidade-arte novidade-em-previa" style={{ width: largura ?? `min(${(TAMANHO[arte.formato] ?? TAMANHO.em_pe).w}px, 100%)` }}>
+      <ArteAjustada arte={arte} />
+      <span className="novidade-x" aria-hidden="true"><Icone nome="fechar" tamanho={16} /></span>
+      <div className="novidade-botoes">
+        {temBotaoVer && <button type="button" className="novidade-depois" tabIndex={-1}>Depois</button>}
+        <button type="button" className="novidade-ok" tabIndex={-1}>{temBotaoVer ? 'Ver agora' : 'Legal!'}{temBotaoVer && <Icone nome="seta" tamanho={17} />}</button>
+      </div>
+    </div>
+  )
+}
 
 function Previa({ r, pequena }: { r: Rascunho; pequena?: boolean }) {
+  if (r.arte?.elementos?.length) {
+    return <div className={`novidade-previa ${pequena ? 'pequena com-arte' : ''}`}><PopupDeArte arte={r.arte} temBotaoVer={Boolean(r.tela)} largura={pequena ? 250 : undefined} /></div>
+  }
   const itens = r.itens.filter((i) => i.texto.pt.trim()).map((i) => ({ icone: i.icone, texto: i.texto.pt }))
   return (
     <div className={`novidade-previa ${pequena ? 'pequena' : ''}`}>
@@ -93,6 +110,9 @@ function CampoIdiomas({ valor, aoMudar, max, rotulo, dica, traducoes }: {
 
 function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | null; aoTerminar: (msg?: string) => void }) {
   const [r, setR] = useState<Rascunho>(inicial)
+  const [modo, setModo] = useState<'arte' | 'simples'>(inicial.arte?.elementos?.length ? 'arte' : 'simples')
+  const [arte, setArte] = useState<Arte>(inicial.arte?.elementos?.length ? inicial.arte : arteInicial())
+  const [vendo, setVendo] = useState(false)
   const [traducoes, setTraducoes] = useState(Boolean(inicial.titulo.en || inicial.titulo.es))
   const [enviando, setEnviando] = useState<'salvar' | 'publicar' | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -100,10 +120,11 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
 
   const salvar = async (publicar: boolean) => {
     setErro(null)
-    if (!r.titulo.pt.trim()) return setErro('Escreva o título.')
+    if (!r.titulo.pt.trim()) return setErro(modo === 'arte' ? 'Dê um nome para a novidade.' : 'Escreva o título.')
+    if (modo === 'arte' && !arte.elementos.length) return setErro('A arte está vazia: ponha pelo menos um elemento.')
     setEnviando(publicar ? 'publicar' : 'salvar')
     try {
-      const { id: novoId } = await api<{ id: number }>('novidade_salvar', { id, novidade: r })
+      const { id: novoId } = await api<{ id: number }>('novidade_salvar', { id, novidade: { ...r, arte: modo === 'arte' ? arte : null } })
       if (publicar) await api('novidade_publicar', { id: novoId, publicar: true })
       aoTerminar(publicar ? 'Novidade publicada: aparece na próxima vez que cada pessoa abrir o OpusCash.' : 'Rascunho salvo.')
     } catch (e) {
@@ -114,10 +135,21 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
   }
 
   return (
-    <section className="cartao editor-novidade">
+    <section className={`cartao editor-novidade ${modo === 'arte' ? 'modo-arte' : ''}`}>
       <div className="editor-form">
-        <header className="cartao-topo"><h2><Icone nome="lapis" tamanho={18} />{id ? 'Editar novidade' : 'Nova novidade'}</h2></header>
+        <header className="cartao-topo">
+          <h2><Icone nome="lapis" tamanho={18} />{id ? 'Editar novidade' : 'Nova novidade'}</h2>
+          <Segmentado rotulo="Estilo" valor={modo} aoMudar={setModo} opcoes={[['arte', 'Arte livre'], ['simples', 'Cartão simples']]} />
+        </header>
 
+        {modo === 'arte' && (
+          <>
+            <CampoIdiomas rotulo="Nome da novidade" dica="só aparece aqui e para leitores de tela" max={60} valor={r.titulo} traducoes={false} aoMudar={(titulo) => setR({ ...r, titulo })} />
+            <EditorArte arte={arte} aoMudar={setArte} traducoes={traducoes} />
+          </>
+        )}
+
+        {modo === 'simples' && (<>
         <div className="linha-escolhas">
           <div>
             <p className="uso-rotulo">Ícone grande</p>
@@ -151,6 +183,7 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
             <Icone nome="mais" tamanho={16} />Pôr item
           </button>
         )}
+        </>)}
 
         <label className="campo">
           <span>O botão leva para</span>
@@ -170,14 +203,25 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
         {erro && <p className="aviso-erro" role="alert">{erro}</p>}
         <div className="form-botoes">
           <button type="button" className="botao" onClick={() => aoTerminar()} disabled={Boolean(enviando)}>Cancelar</button>
+          {modo === 'arte' && <button type="button" className="botao" onClick={() => setVendo(true)}><Icone nome="olho" tamanho={16} />Ver como a pessoa vê</button>}
           <button type="button" className="botao" onClick={() => void salvar(false)} disabled={Boolean(enviando)}>{enviando === 'salvar' ? 'Salvando…' : 'Salvar rascunho'}</button>
           <button type="button" className="botao principal" onClick={() => void salvar(true)} disabled={Boolean(enviando)}>{enviando === 'publicar' ? 'Publicando…' : 'Salvar e publicar'}</button>
         </div>
       </div>
-      <aside className="editor-previa">
-        <p className="uso-rotulo">Como a pessoa vê</p>
-        <Previa r={r} />
-      </aside>
+      {modo === 'simples' && (
+        <aside className="editor-previa">
+          <p className="uso-rotulo">Como a pessoa vê</p>
+          <Previa r={{ ...r, arte: null }} />
+        </aside>
+      )}
+      {vendo && (
+        <div className="novidade-fundo" onMouseDown={(e) => e.target === e.currentTarget && setVendo(false)}>
+          <div className="previa-tela-cheia">
+            <PopupDeArte arte={arte} temBotaoVer={Boolean(r.tela)} />
+            <button type="button" className="botao" onClick={() => setVendo(false)}>Voltar a editar</button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -221,7 +265,7 @@ export function Novidades() {
           <h1>Novidades</h1>
           <p className="sub">O pop-up que aparece uma vez no OpusCash, para quem já usa, mostrando o que tem de novo.</p>
         </div>
-        {!editando && <button className="botao principal" onClick={() => setEditando({ id: null, r: NOVA })}><Icone nome="mais" tamanho={17} />Criar novidade</button>}
+        {!editando && <button className="botao principal" onClick={() => setEditando({ id: null, r: NOVA() })}><Icone nome="mais" tamanho={17} />Criar novidade</button>}
       </header>
 
       {editando && <Editor key={editando.id ?? 'nova'} inicial={editando.r} id={editando.id} aoTerminar={terminar} />}

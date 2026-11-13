@@ -51,7 +51,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
     `pecas/ArteNovidade.tsx` e `pecas/arte.css`, cópias das do OpusCash (`src/components/`): mudou lá, copie para cá.
 - **Reembolsos:** o Início lista os reembolsos feitos no Stripe (pelo painel ou direto no Stripe, cartão e Pix), com a conta
   de cada um; na aba Cartão e Stripe da ficha, cada cobrança mostra os reembolsos dela (valor, data e motivo).
-- **Suporte:** os pedidos de ajuda que as pessoas abrem no OpusCash (botão de conversa em qualquer tela do app; migração 32 do OpusCash + `05-suporte.sql`).
+- **Suporte:** os pedidos de ajuda que as pessoas abrem no OpusCash (botão de conversa em qualquer tela do app; migração 33 do OpusCash + `06-suporte.sql`).
   Números da fila (esperando o suporte, esperando a pessoa, resolvidos na semana, tempo típico da primeira resposta), filtro por situação e por
   assunto (pagamento, algo não funciona, conta, dúvida, sugestão, outro), busca por e-mail, nome ou assunto. A conversa mostra a pessoa (com a
   situação do acesso e o link para a ficha), de onde ela pediu (tela, aparelho, versão, idioma), se ela já viu a resposta, respostas prontas,
@@ -88,7 +88,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    Ela já põe `edigarbarros14@gmail.com` como administrador.
    Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início) e, com a migração 30 do OpusCash já rodada,
    `supabase/migracoes/03-uso.sql` (uso do app, foto e quem está online). Rodou a 01 de novo? Rode a 03 depois dela.
-   Para o suporte: a migração 32 do OpusCash e depois `supabase/migracoes/05-suporte.sql`.
+   Para o suporte: a migração 33 do OpusCash e depois `supabase/migracoes/06-suporte.sql`.
    Com a migração 31 do OpusCash rodada, `supabase/migracoes/04-novidades.sql` (tela Novidades).
    Com a 32 do OpusCash rodada, `supabase/migracoes/05-arte-das-novidades.sql` (arte livre das novidades).
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o

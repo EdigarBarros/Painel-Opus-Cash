@@ -262,7 +262,7 @@ function Pagamentos({ f }: { f: FichaDados }) {
   )
 }
 
-/** Os pedidos de suporte desta pessoa (migração 32 do OpusCash), com link para a conversa. */
+/** Os pedidos de suporte desta pessoa (migração 33 do OpusCash), com link para a conversa. */
 function PedidosDaPessoa({ id }: { id: string }) {
   const { dados, erro } = useDados(`suporte-da-pessoa:${id}`, () => api<{ id: string; categoria: keyof typeof CATEGORIAS_SUPORTE; assunto: string; status: 'aberto' | 'respondido' | 'resolvido'; ultima_mensagem_em: string; nao_lido: boolean; mensagens: number }[]>('suporte_lista', { filtro: 'todos', user: id }))
   if (erro && !dados) return null

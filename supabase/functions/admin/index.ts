@@ -121,7 +121,7 @@ async function lerStripe(db: SupabaseClient, id: string) {
     stripe(`customers/${cus}?expand[]=invoice_settings.default_payment_method`),
     stripe(`subscriptions?customer=${cus}&status=all&limit=5&expand[]=data.default_payment_method`),
     stripe(`invoices?customer=${cus}&limit=10`),
-    stripe(`charges?customer=${cus}&limit=20`),
+    stripe(`charges?customer=${cus}&limit=20&expand[]=data.refunds`),
   ])
   if (cliente?.deleted) return { cliente: null, apagado: true }
   // deno-lint-ignore no-explicit-any
@@ -144,8 +144,44 @@ async function lerStripe(db: SupabaseClient, id: string) {
       id: c.id, valor: c.amount, reembolsado: c.amount_refunded, moeda: c.currency, status: c.status, criada: iso(c.created),
       tipo: c.payment_method_details?.type ?? null, final: c.payment_method_details?.card?.last4 ?? null,
       bandeira: c.payment_method_details?.card?.brand ?? null, falha: c.failure_message, recibo: c.receipt_url, descricao: c.description,
+      // deno-lint-ignore no-explicit-any
+      reembolsos: (c.refunds?.data ?? []).map((r: any) => ({ id: r.id, valor: r.amount, moeda: r.currency, status: r.status, criado: iso(r.created), motivo: r.reason })),
     })),
   }
+}
+
+/**
+ * Reembolsos recentes no Stripe (feitos pelo painel ou direto no Stripe), de cartão e de Pix, com a conta de cada um.
+ * Lido na hora do Stripe: o que foi reembolsado lá aparece aqui sem precisar de mais nada.
+ */
+async function reembolsos(db: SupabaseClient) {
+  const lista = await stripe('refunds?limit=50&expand[]=data.charge')
+  // deno-lint-ignore no-explicit-any
+  const itens: any[] = lista?.data ?? []
+  const clientes = [...new Set(itens.map((r) => r.charge?.customer).filter((c): c is string => typeof c === 'string'))]
+  const porCliente = new Map<string, string>()
+  if (clientes.length) {
+    const { data } = await db.from('assinaturas').select('user_id, stripe_customer_id').in('stripe_customer_id', clientes)
+    for (const a of data ?? []) porCliente.set(a.stripe_customer_id, a.user_id)
+  }
+  const ids = [...new Set([...porCliente.values(), ...itens.map((r) => r.charge?.metadata?.supabase_user_id).filter(Boolean)])]
+  const contas = new Map<string, { email: string | null; nome: string | null }>()
+  if (ids.length) {
+    const { data: perfis } = await db.from('perfis').select('user_id, nome').in('user_id', ids)
+    await Promise.all(ids.map(async (id) => {
+      const { data } = await db.auth.admin.getUserById(id)
+      contas.set(id, { email: data.user?.email ?? null, nome: perfis?.find((x) => x.user_id === id)?.nome ?? null })
+    }))
+  }
+  return itens.map((r) => {
+    const userId = porCliente.get(r.charge?.customer) ?? r.charge?.metadata?.supabase_user_id ?? null
+    return {
+      id: r.id, valor: r.amount, moeda: r.currency, status: r.status, criado: iso(r.created), motivo: r.reason,
+      cobranca: r.charge?.id ?? null, cobrado: r.charge?.amount ?? null, cobrado_em: iso(r.charge?.created),
+      tipo: r.charge?.payment_method_details?.type ?? null, email_stripe: r.charge?.billing_details?.email ?? r.charge?.receipt_email ?? null,
+      user_id: userId, email: userId ? contas.get(userId)?.email ?? null : null, nome: userId ? contas.get(userId)?.nome ?? null : null,
+    }
+  })
 }
 
 const ACOES_STRIPE = ['cancelar_fim', 'desfazer_cancelamento', 'cancelar_agora', 'cobrar_de_novo', 'dias_gratis', 'reembolsar', 'link_cartao']
@@ -254,8 +290,33 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       doBanco(error)
       if (!data?.conta) throw new Recusa('Conta não encontrada.', 404)
       await registrar(db, admin, 'ver_ficha', { id, email: data.conta.email })
+      // foto de perfil (migração 03 do painel; sem ela, a ficha segue com as iniciais)
+      const [{ data: foto }, { data: presenca }] = await Promise.all([
+        db.rpc('adm_foto', { p_user: id }),
+        db.from('uso_presenca').select('visto_em, aberto, tela').eq('user_id', id).maybeSingle(),
+      ])
+      const online = Boolean(presenca?.aberto && Date.now() - new Date(presenca.visto_em).getTime() < 150_000)
+      return { ...data, foto: typeof foto === 'string' ? foto : null, presenca: presenca ? { ...presenca, online } : null }
+    }
+    case 'uso': {
+      // como a pessoa usa o app: presença, telas, tempo, tutorial e QUANTAS coisas cadastrou (nunca o conteúdo).
+      // Só leitura; abrir a ficha já fica no registro.
+      const { data, error } = await db.rpc('adm_uso', { p_user: uuid(p.id) })
+      doBanco(error)
       return data
     }
+    case 'online': {
+      const { data, error } = await db.rpc('adm_online')
+      doBanco(error)
+      return data
+    }
+    case 'uso_geral': {
+      const { data, error } = await db.rpc('adm_uso_geral')
+      doBanco(error)
+      return data
+    }
+    case 'reembolsos':
+      return await reembolsos(db)
     case 'acesso': {
       const pagamento = p.pagamento && typeof p.pagamento === 'object' ? p.pagamento as Record<string, unknown> : null
       const { data, error } = await db.rpc('adm_mudar_acesso', {

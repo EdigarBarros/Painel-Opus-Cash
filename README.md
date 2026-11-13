@@ -31,6 +31,15 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 - **Visual:** o mesmo do OpusCash (cores, fontes Inter/Sora/Montserrat servidas pelo próprio painel, ícones, número que
   conta). Barra lateral no computador e abas embaixo no celular. A conta fica no pé da lateral, com a aparência
   (escuro, claro ou automático, guardada só neste navegador) e o botão de sair.
+- **Uso do app** (migração 30 do OpusCash + `03-uso.sql`): quem está com o OpusCash aberto agora (atualiza sozinho a cada 20 s)
+  e em qual tela; na ficha, a aba **Uso do app** mostra a presença ao vivo, quando foi vista por último, idioma, site ou app,
+  versão, se respondeu as perguntas iniciais e o Consultor, se pulou o tutorial (em qual passo) ou viu inteiro, o jeito de ver
+  (simples, equilibrado, detalhado), as abas ligadas, a foto de perfil, **quantas** coisas cadastrou em cada parte do app
+  (só a contagem, nunca o conteúdo), tempo por dia e tempo, visitas e toques em cada tela. No Início, "Usando agora" e
+  "Como o app é usado" (telas mais usadas, tutorial, jeitos de ver, idiomas e aparelhos de todo mundo). A foto de perfil
+  aparece também na lista de contas e no topo da ficha.
+- **Reembolsos:** o Início lista os reembolsos feitos no Stripe (pelo painel ou direto no Stripe, cartão e Pix), com a conta
+  de cada um; na aba Cartão e Stripe da ficha, cada cobrança mostra os reembolsos dela (valor, data e motivo).
 - **Contas:** busca por e-mail ou nome (atalho `/`), filtros com contagem (em teste, vence em 7 dias, cartão, liberados,
   vitalícios, sem acesso, com problema), ordem (mais novas, último acesso, vence primeiro, nome) e vista em lista ou
   cartões. Cada conta mostra a situação, quantos dias faltam e se entrou hoje (bolinha verde) ou na semana (amarela).
@@ -60,7 +69,8 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 
 1. **Banco:** rode `supabase/migracoes/01-painel.sql` no SQL Editor (precisa das migrações 12, 16 e 29 do OpusCash).
    Ela já põe `edigarbarros14@gmail.com` como administrador.
-   Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início).
+   Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início) e, com a migração 30 do OpusCash já rodada,
+   `supabase/migracoes/03-uso.sql` (uso do app, foto e quem está online). Rodou a 01 de novo? Rode a 03 depois dela.
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
    OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do
    painel, separados por vírgula (localhost, `admin.opuscash.com.br` e `painel-opus-cash*.vercel.app` já valem).

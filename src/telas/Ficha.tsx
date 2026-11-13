@@ -3,13 +3,14 @@ import { api, mensagemDe } from '../lib/api'
 import { useDados, useDemorou } from '../lib/dados'
 import { useAviso } from '../lib/useAviso'
 import {
-  corDoTom, fmtData, fmtDataHora, fmtDinheiro, haQuanto, hojeISO, ICONE_DA_ACAO, iniciais, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
+  corDoTom, fmtData, fmtDataHora, fmtDinheiro, haQuanto, nomeDaTela, hojeISO, ICONE_DA_ACAO, iniciais, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
 } from '../lib/formato'
 import { estiloLente, useLente } from '../lib/useLente'
 import { Icone } from '../pecas/Icone'
 import { Numero } from '../pecas/Numero'
 import { CampoMotivo, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
 import { CartaoStripe } from './Stripe'
+import { UsoDaConta } from './Uso'
 
 interface Assinatura {
   status: string; teste_fim: string | null; periodo_fim: string | null; stripe_customer_id: string | null
@@ -25,11 +26,15 @@ interface FichaDados {
   anotacoes: { id: number; texto: string; criado_em: string; admin_email: string | null }[]
   registro: { id: number; admin_email: string; acao: string; motivo: string | null; criado_em: string }[]
   erros: { id: number; mensagem: string; onde: string | null; versao: string | null; criado_em: string }[]
+  /** foto de perfil (data URL) que a pessoa pôs no OpusCash */
+  foto?: string | null
+  /** última vez que o app deu sinal de vida (migração 30 do OpusCash) */
+  presenca?: { visto_em: string; aberto: boolean; tela: string | null; online: boolean } | null
 }
 
 type Janela = 'liberar' | 'teste' | 'revogar' | 'senha_email' | 'senha_link' | 'confirmar_email' | 'reenviar_confirmacao'
   | 'trocar_email' | 'bloquear' | 'desbloquear' | 'encerrar_sessoes' | 'excluir'
-type Aba = 'geral' | 'cartao' | 'pagamentos' | 'suporte' | 'erros'
+type Aba = 'geral' | 'uso' | 'cartao' | 'pagamentos' | 'suporte' | 'erros'
 
 const FORMAS = [['pix', 'Pix'], ['transferencia', 'Transferência'], ['dinheiro', 'Dinheiro'], ['outro', 'Outro']] as const
 const ICONE_FORMA: Record<string, string> = { pix: 'dinheiro', transferencia: 'trocar', dinheiro: 'carteira', outro: 'reticencias' }
@@ -328,9 +333,12 @@ export function Ficha({ id }: { id: string }) {
   const bloqueada = Boolean(f.conta.bloqueado_ate && new Date(f.conta.bloqueado_ate).getTime() > agora)
   const temStripe = Boolean(a?.stripe_customer_id)
   const nome = f.perfil?.nome
+  // o login (last_sign_in) só muda ao entrar com senha; o sinal de vida do app diz quando a pessoa olhou de verdade
+  const vistoEm = [f.conta.ultimo_acesso, f.presenca?.visto_em].filter(Boolean).sort().pop() ?? null
   const nPag = f.pix_stripe.length + f.pagamentos.length
   const abas: [Aba, string, string, number?][] = [
     ['geral', 'Visão geral', 'inicio'],
+    ['uso', 'Uso do app', 'olho'],
     ...(temStripe ? [['cartao', 'Cartão e Stripe', 'cartao'] as [Aba, string, string]] : []),
     ['pagamentos', 'Pagamentos', 'dinheiro', nPag],
     ['suporte', 'Anotações e histórico', 'lapis', f.anotacoes.length],
@@ -349,7 +357,7 @@ export function Ficha({ id }: { id: string }) {
       <section className="ficha-heroi" style={{ '--c': corDoTom(s.tom) } as React.CSSProperties}>
         <div className="heroi-aurora" aria-hidden="true"><i /><i /></div>
         <div className="heroi-quem">
-          <span className="avatar-heroi">{iniciais(nome || f.conta.email)}</span>
+          <span className={`avatar-heroi ${f.foto ? 'com-foto' : ''}`}>{f.foto ? <img src={f.foto} alt={`Foto de ${nome || f.conta.email}`} /> : iniciais(nome || f.conta.email)}</span>
           <div className="heroi-textos">
             <h1>{nome || f.conta.email}</h1>
             <p className="heroi-email">
@@ -360,6 +368,7 @@ export function Ficha({ id }: { id: string }) {
             </p>
             <div className="etiquetas">
               <Etiqueta tom={s.tom}>{s.texto}</Etiqueta>
+              {f.presenca?.online && <Etiqueta tom="verde">Usando agora · {nomeDaTela(f.presenca.tela)}</Etiqueta>}
               {bloqueada && <Etiqueta tom="vermelho">Bloqueada</Etiqueta>}
               {!f.conta.confirmado_em && <Etiqueta tom="amarelo">E-mail não confirmado</Etiqueta>}
               {f.conta.admin && <Etiqueta tom="violeta">Administrador</Etiqueta>}
@@ -368,7 +377,7 @@ export function Ficha({ id }: { id: string }) {
         </div>
         <dl className="heroi-dados">
           <div><dt><Icone nome="calendario" tamanho={15} />Cadastro</dt><dd>{fmtData(f.conta.criado_em)}<small>{haQuanto(f.conta.criado_em)}</small></dd></div>
-          <div><dt><Icone nome="relogio" tamanho={15} />Último acesso</dt><dd>{haQuanto(f.conta.ultimo_acesso)}<small>{f.conta.ultimo_acesso ? fmtDataHora(f.conta.ultimo_acesso) : 'nunca entrou'}</small></dd></div>
+          <div><dt><Icone nome="relogio" tamanho={15} />Visto por último</dt><dd>{f.presenca?.online ? 'agora' : haQuanto(vistoEm)}<small>{vistoEm ? fmtDataHora(vistoEm) : 'nunca entrou'}</small></dd></div>
           <div><dt><Icone nome="pessoa" tamanho={15} />Aparelhos</dt><dd>{f.conta.sessoes}<small>com login ativo</small></dd></div>
           <div><dt><Icone nome="globo" tamanho={15} />Moeda</dt><dd>{f.perfil?.moeda ?? '—'}<small>{f.perfil?.onboarding_em ? 'fez as perguntas iniciais' : 'não terminou as perguntas'}</small></dd></div>
         </dl>
@@ -384,6 +393,7 @@ export function Ficha({ id }: { id: string }) {
       </div>
 
       <div key={aba} className="ficha-conteudo">
+        {aba === 'uso' && <UsoDaConta id={id} />}
         {aba === 'geral' && (
           <>
             <div className="grade-ficha">

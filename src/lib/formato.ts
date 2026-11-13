@@ -121,3 +121,45 @@ export const ICONE_DA_ACAO: Record<string, string> = {
   stripe_cancelar_fim: 'cartao', stripe_desfazer_cancelamento: 'desfazer', stripe_cancelar_agora: 'cartao', stripe_cobrar_de_novo: 'atualizar',
   stripe_dias_gratis: 'estrela', stripe_reembolsar: 'desfazer', stripe_link_cartao: 'cartao',
 }
+
+/** Nome de cada tela do OpusCash (o que o app manda na medição de uso, lib/uso.ts do OpusCash). */
+const NOME_DA_TELA: Record<string, string> = {
+  inicio: 'Início', lancamentos: 'Lançamentos', analise: 'Consultor', invest: 'Invest', contas: 'Contas do mês', cartoes: 'Cartões',
+  dividas: 'Dívidas', metas: 'Metas', patrimonio: 'Dinheiro guardado', ano: 'Resumo do ano', lancar: 'Lançando',
+  editar_lancamento: 'Editando um lançamento', importar: 'Importando extrato', categorias: 'Categorias', configuracoes: 'Configurações',
+  excluir_conta: 'Excluir a conta', zerar_dados: 'Zerar os dados', meses: 'Quadro dos meses', tutorial: 'Tutorial',
+  questionario: 'Perguntas iniciais', questionario_refazer: 'Refazendo as perguntas', assinatura: 'Tela de assinatura',
+  carregando: 'Abrindo o app', painel: 'Painel',
+}
+export const nomeDaTela = (t?: string | null) => (t ? NOME_DA_TELA[t] ?? t : '—')
+
+const nomesDeIdioma = (() => {
+  try { return new Intl.DisplayNames(['pt-BR'], { type: 'language' }) } catch { return null }
+})()
+/** "en" → "inglês". */
+export function nomeDoIdioma(codigo?: string | null) {
+  if (!codigo) return '—'
+  try {
+    const n = nomesDeIdioma?.of(codigo)
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : codigo
+  } catch {
+    return codigo
+  }
+}
+
+export const NOME_DO_APARELHO: Record<string, string> = {
+  app_android: 'App Android', site_celular: 'Site no celular', site_computador: 'Site no computador', site: 'Site',
+}
+
+export const NOME_DO_MODO: Record<string, string> = { simples: 'Simples', equilibrado: 'Equilibrado', detalhado: 'Detalhado' }
+
+/** 3725 segundos → "1 h 2 min"; 42 → "42 s". */
+export function duracao(segundos: number) {
+  const s = Math.round(segundos || 0)
+  if (s < 60) return `${s} s`
+  const min = Math.round(s / 60)
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const resto = min % 60
+  return resto ? `${h} h ${resto} min` : `${h} h`
+}

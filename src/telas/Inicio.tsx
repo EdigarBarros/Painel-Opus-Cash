@@ -7,6 +7,7 @@ import { Icone } from '../pecas/Icone'
 import { Numero } from '../pecas/Numero'
 import { Segmentado } from '../pecas/Segmentado'
 import { ErroNaTela } from '../ui'
+import { Reembolsos, UsandoAgora, UsoDoApp } from './InicioUso'
 
 interface Dia { dia: string; cadastros: number; pix: number; por_fora: number; erros: number }
 interface Atencao { id: string; email: string; nome: string | null; status: string; motivo: 'cartao_recusado' | 'prazo_vence' | 'teste_vence'; quando: string | null }
@@ -440,6 +441,11 @@ export function Inicio() {
       </div>
 
       <div className="grade-inicio metades">
+        <UsandoAgora />
+        <UsoDoApp />
+      </div>
+
+      <div className="grade-inicio metades">
         <PedeAtencao itens={r.atencao ?? []} total={totalAtencao} cartoes={r.cartao_pendente} prazos={r.pix_vence_7d} testes={r.teste_vence_7d} />
         <UltimosCadastros lista={r.ultimos_cadastros ?? []} />
       </div>
@@ -449,6 +455,7 @@ export function Inicio() {
         <UltimasAcoes />
       </div>
 
+      <Reembolsos />
     </div>
   )
 }

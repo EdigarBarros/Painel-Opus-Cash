@@ -184,6 +184,35 @@ async function reembolsos(db: SupabaseClient) {
   })
 }
 
+// ---------- Novidades (pop-up do OpusCash) ----------
+const CORES_NOVIDADE = ['marca', 'verde', 'azul', 'violeta', 'amarelo', 'rosa']
+const ONDE_NOVIDADE = ['todos', 'site', 'app']
+const nomeCurto = (v: unknown) => (typeof v === 'string' && /^[a-z_]{1,30}$/.test(v) ? v : null)
+const textoNosIdiomas = (v: unknown, max: number) => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const r: Record<string, string> = { pt: texto(o.pt, max) }
+  for (const l of ['en', 'es']) { const t = texto(o[l], max); if (t) r[l] = t }
+  return r
+}
+
+/** Confere e limpa uma novidade vinda do painel: título curto, até 4 itens, ícone, cor, tela e onde aparece. */
+function limparNovidade(v: unknown) {
+  const n = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const titulo = textoNosIdiomas(n.titulo, 60)
+  if (!titulo.pt) throw new Recusa('Escreva o título.')
+  const itens = (Array.isArray(n.itens) ? n.itens : []).slice(0, 4).map((it) => {
+    const i = (it && typeof it === 'object' ? it : {}) as Record<string, unknown>
+    return { icone: nomeCurto(i.icone) ?? 'estrela', texto: textoNosIdiomas(i.texto, 40) }
+  }).filter((it) => it.texto.pt)
+  return {
+    titulo, itens,
+    icone: nomeCurto(n.icone) ?? 'estrela',
+    cor: CORES_NOVIDADE.includes(n.cor as string) ? n.cor as string : 'marca',
+    tela: nomeCurto(n.tela),
+    onde: ONDE_NOVIDADE.includes(n.onde as string) ? n.onde as string : 'todos',
+  }
+}
+
 const ACOES_STRIPE = ['cancelar_fim', 'desfazer_cancelamento', 'cancelar_agora', 'cobrar_de_novo', 'dias_gratis', 'reembolsar', 'link_cartao']
 
 /** Ações no Stripe pedidas pelo painel. Todas exigem motivo e ficam no registro. */
@@ -298,7 +327,7 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const online = Boolean(presenca?.aberto && Date.now() - new Date(presenca.visto_em).getTime() < 150_000)
       return { ...data, foto: typeof foto === 'string' ? foto : null, presenca: presenca ? { ...presenca, online } : null }
     }
-    // ---------- suporte: pedidos de ajuda que as pessoas abrem no OpusCash (migração 31 do OpusCash, 04 do painel) ----------
+    // ---------- suporte: pedidos de ajuda que as pessoas abrem no OpusCash (migração 32 do OpusCash, 05 do painel) ----------
     case 'suporte_contagem': {
       const { data, error } = await db.rpc('adm_suporte_contagem')
       doBanco(error)
@@ -365,6 +394,45 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
     }
     case 'reembolsos':
       return await reembolsos(db)
+    case 'novidades': {
+      const { data, error } = await db.rpc('adm_novidades')
+      doBanco(error)
+      return data
+    }
+    case 'novidade_salvar': {
+      // cria ou edita (rascunho ou publicada). O que vai para o banco passa por limparNovidade.
+      const dados = limparNovidade(p.novidade)
+      const id = Number(p.id) || null
+      const q = id
+        ? db.from('novidades').update({ ...dados, atualizada_em: new Date().toISOString() }).eq('id', id).select('id').single()
+        : db.from('novidades').insert(dados).select('id').single()
+      const { data, error } = await q
+      doBanco(error)
+      if (!data) throw new Recusa('Novidade não encontrada.', 404)
+      await registrar(db, admin, id ? 'novidade_editar' : 'novidade_criar', null, null, null, { id: data.id, titulo: dados.titulo.pt })
+      return { id: data.id }
+    }
+    case 'novidade_publicar': {
+      // publicar = aparece para todo mundo que já tinha conta, uma vez. Despublicar = some (quem já viu não vê de novo).
+      const id = Number(p.id)
+      if (!Number.isInteger(id) || id < 1) throw new Recusa('Novidade inválida.')
+      const publicar = p.publicar !== false
+      const { data, error } = await db.from('novidades')
+        .update({ publicada_em: publicar ? new Date().toISOString() : null, atualizada_em: new Date().toISOString() })
+        .eq('id', id).select('id, titulo').single()
+      doBanco(error)
+      if (!data) throw new Recusa('Novidade não encontrada.', 404)
+      await registrar(db, admin, publicar ? 'novidade_publicar' : 'novidade_despublicar', null, null, null, { id, titulo: data.titulo?.pt })
+      return { ok: true }
+    }
+    case 'novidade_apagar': {
+      const id = Number(p.id)
+      if (!Number.isInteger(id) || id < 1) throw new Recusa('Novidade inválida.')
+      const { data, error } = await db.from('novidades').delete().eq('id', id).select('titulo').maybeSingle()
+      doBanco(error)
+      await registrar(db, admin, 'novidade_apagar', null, null, null, { id, titulo: data?.titulo?.pt })
+      return { ok: true }
+    }
     case 'acesso': {
       const pagamento = p.pagamento && typeof p.pagamento === 'object' ? p.pagamento as Record<string, unknown> : null
       const { data, error } = await db.rpc('adm_mudar_acesso', {

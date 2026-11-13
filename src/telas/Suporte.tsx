@@ -11,7 +11,7 @@ import { Segmentado } from '../pecas/Segmentado'
 import { CampoMotivo, ErroNaTela, Etiqueta, FormularioDeAcao, Modal } from '../ui'
 
 /*
- * Suporte: os pedidos de ajuda que as pessoas abrem no OpusCash (migração 31 do OpusCash, 04 do painel).
+ * Suporte: os pedidos de ajuda que as pessoas abrem no OpusCash (migração 32 do OpusCash, 05 do painel).
  * Lista à esquerda (filtros por situação e assunto, busca) e a conversa à direita, com a resposta e o "resolver".
  * Ler a conversa marca como lida pelo suporte e fica no registro; responder e mudar a situação também.
  */
@@ -87,7 +87,7 @@ function Conversa({ id, aoMudar, avisar }: { id: string; aoMudar: () => void; av
   const total = p?.mensagens.length ?? 0
   useEffect(() => { fim.current?.scrollIntoView({ block: 'end' }) }, [total, id])
 
-  if (erro && !p) return <ErroNaTela erro={/adm_suporte|function|schema/i.test(erro) ? 'Falta rodar a migração 31 do OpusCash e a 04 do painel no Supabase.' : erro} aoTentar={recarregar} />
+  if (erro && !p) return <ErroNaTela erro={/adm_suporte|function|schema/i.test(erro) ? 'Falta rodar a migração 32 do OpusCash e a 05 do painel no Supabase.' : erro} aoTentar={recarregar} />
   if (!p) return <div className="esqueleto" style={{ height: 420 }} />
   const t = p.ticket
   const c = CATEGORIAS[t.categoria]
@@ -235,7 +235,7 @@ export function Suporte({ idAberto, buscaInicial }: { idAberto?: string; buscaIn
   const categorias = useMemo(() => Object.entries(CATEGORIAS) as [Categoria, (typeof CATEGORIAS)[Categoria]][], [])
 
   if (erro && !lista) {
-    return <ErroNaTela erro={/adm_suporte|function|schema/i.test(erro) ? 'Falta rodar a migração 31 do OpusCash e a 04 do painel no Supabase.' : erro} aoTentar={recarregar} />
+    return <ErroNaTela erro={/adm_suporte|function|schema/i.test(erro) ? 'Falta rodar a migração 32 do OpusCash e a 05 do painel no Supabase.' : erro} aoTentar={recarregar} />
   }
 
   return (

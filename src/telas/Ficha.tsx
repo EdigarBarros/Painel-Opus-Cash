@@ -61,11 +61,15 @@ function AnelDias({ fim, inicio, cor }: { fim: string; inicio: number; cor: stri
   const dias = Math.ceil(resta / DIA)
   const R = 52, C = 2 * Math.PI * R
   const frac = Math.min(1, resta / total)
+  // as pontas arredondadas avançam meia espessura cada (11/2): se o arco + as duas pontas já dão a volta, desenha o anel inteiro
+  const cheio = C * frac + 11 + 2 >= C
   return (
     <div className="anel-dias" style={{ '--c': cor } as React.CSSProperties}>
       <svg viewBox="0 0 128 128" aria-hidden="true">
         <circle cx="64" cy="64" r={R} className="anel-fundo" />
-        <circle cx="64" cy="64" r={R} className="anel-cheio" strokeDasharray={`${C * frac} ${C}`} transform="rotate(-90 64 64)" />
+        {/* quase cheio: anel inteiro, sem pontas (as duas pontas arredondadas se encontrando faziam um calombo no topo) */}
+        <circle cx="64" cy="64" r={R} className={`anel-cheio ${cheio ? 'completo' : ''}`}
+          strokeDasharray={cheio ? `${C} 0` : `${C * frac} ${C}`} transform="rotate(-90 64 64)" />
       </svg>
       <div className="anel-centro">
         <strong><Numero valor={dias} /></strong>
@@ -302,6 +306,8 @@ export function Ficha({ id }: { id: string }) {
   const demorou = useDemorou()
   const [janela, setJanela] = useState<Janela | null>(null)
   const [aba, setAba] = useState<Aba>('geral')
+  // a aba só anima quando a pessoa troca (ao abrir a ficha, ela entra junto com a página, numa onda só)
+  const [trocouAba, setTrocouAba] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const [toast, avisar] = useAviso()
   const [agora, setAgora] = useState(() => Date.now())
@@ -386,13 +392,13 @@ export function Ficha({ id }: { id: string }) {
       <div ref={refAbas} className="abas-ficha" role="tablist" aria-label="Partes da ficha">
         {lente && <span className="lente" aria-hidden="true" style={estiloLente(lente)} />}
         {abas.map(([v, nomeAba, icone, n]) => (
-          <button key={v} type="button" role="tab" aria-selected={aba === v} className={`aba-ficha ${aba === v ? 'ativo' : ''}`} onClick={() => setAba(v)}>
+          <button key={v} type="button" role="tab" aria-selected={aba === v} className={`aba-ficha ${aba === v ? 'ativo' : ''}`} onClick={() => { setAba(v); setTrocouAba(true) }}>
             <Icone nome={icone} tamanho={16} />{nomeAba}{n ? <b>{n}</b> : null}
           </button>
         ))}
       </div>
 
-      <div key={aba} className="ficha-conteudo">
+      <div key={aba} className={`ficha-conteudo ${trocouAba ? 'trocou' : ''}`}>
         {aba === 'uso' && <UsoDaConta id={id} />}
         {aba === 'geral' && (
           <>

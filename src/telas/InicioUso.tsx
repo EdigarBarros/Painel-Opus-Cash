@@ -44,9 +44,12 @@ export function UsandoAgora() {
       </header>
       {erro && !dados ? <p className="vazio-bonito">{semMigracao(erro) ? 'Falta rodar a migração 03 do painel no Supabase.' : 'Não deu para carregar agora.'}</p>
         : !dados ? <div className="esqueleto" style={{ height: 160 }} />
-        : dados.length === 0 ? <p className="vazio-bonito"><Icone nome="relogio" tamanho={20} />Ninguém com o app aberto neste minuto.</p>
+        : dados.length === 0 ? (
+          <div className="calmo"><span className="vazio-icone"><Icone nome="relogio" tamanho={26} /></span><strong>Ninguém com o app aberto agora</strong>
+            <span>Quem abrir o OpusCash aparece aqui sozinho, em até 20 segundos.</span></div>
+        )
         : (
-          <ul className="online-lista">
+          <ul className="online-lista rolagem">
             {dados.map((o) => (
               <li key={o.id}>
                 <a href={`#/contas/${o.id}`}>

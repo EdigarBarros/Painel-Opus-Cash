@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
 import { api, mensagemDe, ouvirPerdaDeAcesso } from './lib/api'
 import { esquecerTudo } from './lib/dados'
+import { entrarNaTela, esquecerVisitas } from './lib/visitas'
 import { supabase } from './lib/supabase'
 import { estiloLente, useLente } from './lib/useLente'
 import { Codigo } from './telas/Codigo'
@@ -65,7 +66,7 @@ export default function App() {
 
   // o servidor recusou no meio do uso: login caiu (volta ao início) ou falta o código (pede de novo)
   useEffect(() => ouvirPerdaDeAcesso((motivo) => {
-    if (motivo === 'login') { setEu(null); esquecerTudo(); void supabase.auth.signOut() }
+    if (motivo === 'login') { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut() }
     else setEu((e) => (e ? { ...e, nivel: 'aal1' } : e))
   }), [])
 
@@ -80,7 +81,7 @@ export default function App() {
       if (Date.now() - ultimo > PARADO_MAX) {
         setAvisoSaida('Você saiu sozinho depois de 30 minutos parado. Entre de novo.')
         setEu(null)
-        esquecerTudo(); void supabase.auth.signOut()
+        esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut()
       }
     }, 30_000)
     return () => {
@@ -89,7 +90,7 @@ export default function App() {
     }
   }, [sessao])
 
-  const sair = () => { setAvisoSaida(null); setEu(null); esquecerTudo(); void supabase.auth.signOut() }
+  const sair = () => { setAvisoSaida(null); setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut() }
 
   if (sessao === undefined) return <Carregando />
   if (!sessao) return <Entrar aviso={avisoSaida} />
@@ -122,6 +123,9 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
   const secao = partes[0] ?? 'inicio'
   const refNav = useRef<HTMLElement>(null)
   const refAbas = useRef<HTMLElement>(null)
+  // tela atual (a ficha de cada conta conta como uma tela): primeira visita = abertura completa; volta = entrada leve
+  const tela = secao === 'contas' && partes[1] ? `ficha:${partes[1]}` : secao
+  const entrada = entrarNaTela(tela) ? 'completa' : 'leve'
   const lenteNav = useLente(refNav, 'a.ativo', secao)
   const lenteAbas = useLente(refAbas, 'a.ativo', secao)
   return (
@@ -145,7 +149,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
           <a href="#/" aria-label="Início do painel"><Marca /></a>
           <Conta email={email} aoSair={aoSair} lado="baixo" compacta />
         </header>
-        <main className="conteudo">
+        <main className="conteudo" data-entrada={entrada}>
           {secao === 'contas' && partes[1] ? <Ficha key={partes[1]} id={partes[1]} />
             : secao === 'contas' ? <Contas key={params.toString()} filtroInicial={params.get('filtro')} buscaInicial={params.get('busca')} />
             : secao === 'erros' ? <Erros />

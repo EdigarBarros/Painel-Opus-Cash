@@ -708,6 +708,9 @@ body::before {
 .pagina > :nth-child(4) { animation-delay: .18s; }
 .pagina > :nth-child(5) { animation-delay: .24s; }
 .pagina > :nth-child(n+6) { animation-delay: .3s; }
+/* enquanto espera o servidor: o esqueleto só aparece (sem subir), para o conteúdo de verdade subir uma vez só */
+.pagina-esperando { min-height: 70vh; }
+.pagina[aria-busy] > *, .pagina > .esqueleto-lista { animation: aparece .4s var(--mola) backwards; }
 @keyframes surgir-sem-desfoque { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 /* pílula que desliza até o item ativo (menu lateral, abas do celular) */
 .lente {

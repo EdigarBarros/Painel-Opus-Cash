@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, mensagemDe } from '../lib/api'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api } from '../lib/api'
+import { useDados, useDemorou } from '../lib/dados'
 import { fmtDinheiro, haQuanto, iniciais, inteiro, NOME_DA_ACAO } from '../lib/formato'
 import { GraficoArea, GraficoBarras, Mini, Rosca, type Fatia } from '../pecas/Graficos'
 import { Icone } from '../pecas/Icone'
@@ -286,15 +287,9 @@ function Uso({ r }: { r: Resumo }) {
 }
 
 function UltimasAcoes() {
-  const [linhas, setLinhas] = useState<Acao[] | null>(null)
-  const [erro, setErro] = useState(false)
-  useEffect(() => {
-    let cancelado = false
-    api<Acao[]>('registro', { sem_leituras: true })
-      .then((d) => { if (!cancelado) setLinhas(d.slice(0, 6)) })
-      .catch(() => { if (!cancelado) setErro(true) })
-    return () => { cancelado = true }
-  }, [])
+  const { dados, erro: falhou } = useDados('registro:sem-leituras', () => api<Acao[]>('registro', { sem_leituras: true }))
+  const linhas = dados ? dados.slice(0, 6) : null
+  const erro = Boolean(falhou && !dados)
   return (
     <section className="cartao">
       <header className="cartao-topo">
@@ -333,19 +328,11 @@ function Esqueleto() {
 }
 
 export function Inicio() {
-  const [r, setR] = useState<Resumo | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const [quando, setQuando] = useState<Date | null>(null)
-  const [atualizando, setAtualizando] = useState(true)
+  const { dados: r, erro, em, buscando: atualizando, recarregar: carregar } = useDados('resumo', () => api<Resumo>('resumo'))
+  const quando = em ? new Date(em) : null
+  const demorou = useDemorou()
   const [busca, setBusca] = useState('')
 
-  const carregar = useCallback(() => {
-    api<Resumo>('resumo')
-      .then((d) => { setR(d); setErro(null); setQuando(new Date()) })
-      .catch((e) => setErro(mensagemDe(e)))
-      .finally(() => setAtualizando(false))
-  }, [])
-  useEffect(carregar, [carregar])
   // atualiza sozinho a cada 5 minutos enquanto a aba estiver aberta na frente
   useEffect(() => {
     const t = window.setInterval(() => { if (document.visibilityState === 'visible') carregar() }, 5 * 60_000)
@@ -353,7 +340,7 @@ export function Inicio() {
   }, [carregar])
 
   if (erro && !r) return <ErroNaTela erro={erro} aoTentar={carregar} />
-  if (!r) return <Esqueleto />
+  if (!r) return demorou ? <Esqueleto /> : <div className="pagina-esperando" />
 
   // o painel antigo do banco devolvia só 30 dias de cadastros: monta o mesmo formato para não quebrar
   const dias: Dia[] = r.por_dia_90d ?? r.cadastros_por_dia.map((d) => ({ dia: d.dia, cadastros: d.n, pix: 0, por_fora: 0, erros: 0 }))
@@ -389,7 +376,7 @@ export function Inicio() {
             <input type="search" placeholder="Achar conta por e-mail ou nome" value={busca} onChange={(e) => setBusca(e.target.value)}
               aria-label="Achar conta por e-mail ou nome" />
           </form>
-          <button className={`icone-btn ${atualizando ? 'girando' : ''}`} onClick={() => { setAtualizando(true); carregar() }} disabled={atualizando} aria-label="Atualizar os números" title="Atualizar os números">
+          <button className={`icone-btn ${atualizando ? 'girando' : ''}`} onClick={carregar} disabled={atualizando} aria-label="Atualizar os números" title="Atualizar os números">
             <Icone nome="atualizar" tamanho={18} />
           </button>
         </div>

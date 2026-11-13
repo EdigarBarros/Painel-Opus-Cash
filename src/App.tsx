@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
 import { api, mensagemDe, ouvirPerdaDeAcesso } from './lib/api'
+import { esquecerTudo } from './lib/dados'
 import { supabase } from './lib/supabase'
 import { estiloLente, useLente } from './lib/useLente'
 import { Codigo } from './telas/Codigo'
@@ -64,7 +65,7 @@ export default function App() {
 
   // o servidor recusou no meio do uso: login caiu (volta ao início) ou falta o código (pede de novo)
   useEffect(() => ouvirPerdaDeAcesso((motivo) => {
-    if (motivo === 'login') { setEu(null); void supabase.auth.signOut() }
+    if (motivo === 'login') { setEu(null); esquecerTudo(); void supabase.auth.signOut() }
     else setEu((e) => (e ? { ...e, nivel: 'aal1' } : e))
   }), [])
 
@@ -79,7 +80,7 @@ export default function App() {
       if (Date.now() - ultimo > PARADO_MAX) {
         setAvisoSaida('Você saiu sozinho depois de 30 minutos parado. Entre de novo.')
         setEu(null)
-        void supabase.auth.signOut()
+        esquecerTudo(); void supabase.auth.signOut()
       }
     }, 30_000)
     return () => {
@@ -88,7 +89,7 @@ export default function App() {
     }
   }, [sessao])
 
-  const sair = () => { setAvisoSaida(null); setEu(null); void supabase.auth.signOut() }
+  const sair = () => { setAvisoSaida(null); setEu(null); esquecerTudo(); void supabase.auth.signOut() }
 
   if (sessao === undefined) return <Carregando />
   if (!sessao) return <Entrar aviso={avisoSaida} />

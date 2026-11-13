@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api, mensagemDe } from '../lib/api'
+import { useState } from 'react'
+import { api } from '../lib/api'
+import { useDados } from '../lib/dados'
 import { fmtData, fmtDataHora, fmtDinheiro } from '../lib/formato'
 import { Icone } from '../pecas/Icone'
 import { CampoMotivo, Carregando, Etiqueta, FormularioDeAcao, Modal } from '../ui'
@@ -78,15 +79,12 @@ type Janela =
 
 /** Tudo o que o Stripe sabe da conta, com as ações de suporte (cada uma com motivo e registro). */
 export function CartaoStripe({ id, email, aoMudar, avisar }: { id: string; email: string; aoMudar: () => void; avisar: (m: string) => void }) {
-  const [d, setD] = useState<DadosStripe | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados, erro: falhou, recarregar: carregar } = useDados(`stripe:${id}`, () => api<DadosStripe>('stripe', { id }))
+  const d = dados ?? null
+  const erro = falhou && !dados ? falhou : null
   const [janela, setJanela] = useState<Janela | null>(null)
   const [copiado, setCopiado] = useState<string | null>(null)
 
-  const carregar = useCallback(() => {
-    api<DadosStripe>('stripe', { id }).then((r) => { setD(r); setErro(null) }).catch((e) => setErro(mensagemDe(e)))
-  }, [id])
-  useEffect(carregar, [carregar])
 
   const terminar = (msg?: string) => {
     setJanela(null)

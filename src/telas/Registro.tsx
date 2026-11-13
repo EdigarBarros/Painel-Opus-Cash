@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api, mensagemDe } from '../lib/api'
+import { useState } from 'react'
+import { api } from '../lib/api'
+import { useDados, useDemorou } from '../lib/dados'
 import { fmtDataHora, NOME_DA_ACAO } from '../lib/formato'
 import { Carregando, ErroNaTela } from '../ui'
 
@@ -8,12 +9,11 @@ interface Linha { id: number; admin_email: string; acao: string; alvo_id: string
 /** Tudo o que o suporte fez, do mais novo para o mais velho. Ninguém apaga daqui. */
 export function Registro() {
   const [comLeituras, setComLeituras] = useState(false)
-  const [linhas, setLinhas] = useState<Linha[] | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const carregar = useCallback(() => {
-    api<Linha[]>('registro', { sem_leituras: !comLeituras }).then((d) => { setLinhas(d); setErro(null) }).catch((e) => setErro(mensagemDe(e)))
-  }, [comLeituras])
-  useEffect(carregar, [carregar])
+  const { dados, erro: falhou, recarregar: carregar } = useDados(comLeituras ? 'registro:com-leituras' : 'registro:sem-leituras',
+    () => api<Linha[]>('registro', { sem_leituras: !comLeituras }), { manterAnterior: true })
+  const linhas = dados ?? null
+  const erro = falhou && !dados ? falhou : null
+  const demorou = useDemorou()
 
   return (
     <div className="pagina">
@@ -23,7 +23,7 @@ export function Registro() {
         <input type="checkbox" checked={comLeituras} onChange={(e) => setComLeituras(e.target.checked)} /> Mostrar também as fichas abertas
       </label>
       {erro && <ErroNaTela erro={erro} aoTentar={carregar} />}
-      {!erro && !linhas && <Carregando />}
+      {!erro && !linhas && demorou && <Carregando />}
       {linhas && linhas.length === 0 && <p className="vazio">Nada registrado ainda.</p>}
       {linhas && linhas.length > 0 && (
         <div className="tabela-rolagem">

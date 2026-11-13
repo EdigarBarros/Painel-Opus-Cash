@@ -43,6 +43,12 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
   palavras), para onde o botão leva e onde aparece (site, app ou os dois), com a prévia ao lado igual ao que a pessoa vê.
   Salve como rascunho ou publique. Só a mais recente publicada aparece; a lista mostra quantas pessoas já viram. Publicar não
   pede versão nova do site nem do app (no app Android, vale a partir da 2.5.0).
+  - **Arte livre** (migração 32 do OpusCash + `05-arte-das-novidades.sql`): um editor para montar o pop-up no estilo dos anúncios
+    do OpusCash. Modelos prontos (Lançamento, Novidade, Suporte), formato em pé ou deitado, 6 fundos e os elementos da marca
+    para pôr na arte: título, frase, marca, símbolo, cartão, gráfico, barras, rosca, moedas, selo, botão, ícone, forma e brilho.
+    Arraste para mover, puxe os cantos para mudar o tamanho, guias de alinhamento entre os elementos, camadas, cor, inclinação,
+    transparência, duplicar e desfazer (Ctrl+Z). "Ver como a pessoa vê" mostra o pop-up final. As peças ficam em
+    `pecas/ArteNovidade.tsx` e `pecas/arte.css`, cópias das do OpusCash (`src/components/`): mudou lá, copie para cá.
 - **Reembolsos:** o Início lista os reembolsos feitos no Stripe (pelo painel ou direto no Stripe, cartão e Pix), com a conta
   de cada um; na aba Cartão e Stripe da ficha, cada cobrança mostra os reembolsos dela (valor, data e motivo).
 - **Suporte:** os pedidos de ajuda que as pessoas abrem no OpusCash (botão de conversa em qualquer tela do app; migração 32 do OpusCash + `05-suporte.sql`).
@@ -84,6 +90,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    `supabase/migracoes/03-uso.sql` (uso do app, foto e quem está online). Rodou a 01 de novo? Rode a 03 depois dela.
    Para o suporte: a migração 32 do OpusCash e depois `supabase/migracoes/05-suporte.sql`.
    Com a migração 31 do OpusCash rodada, `supabase/migracoes/04-novidades.sql` (tela Novidades).
+   Com a 32 do OpusCash rodada, `supabase/migracoes/05-arte-das-novidades.sql` (arte livre das novidades).
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
    OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do
    painel, separados por vírgula (localhost, `admin.opuscash.com.br` e `painel-opus-cash*.vercel.app` já valem).

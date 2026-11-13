@@ -195,6 +195,48 @@ const textoNosIdiomas = (v: unknown, max: number) => {
   return r
 }
 
+const TIPOS_ARTE = ['texto', 'marca', 'simbolo', 'cartao', 'grafico', 'barras', 'rosca', 'moedas', 'selo', 'botao', 'icone', 'forma', 'brilho']
+const FUNDOS_ARTE = ['noite', 'aurora', 'marca', 'violeta', 'verde', 'claro']
+const CORES_ARTE = ['branco', 'suave', 'escuro', 'verde', 'azul', 'violeta', 'amarelo', 'rosa', 'ciano']
+const numero = (v: unknown, min: number, max: number, padrao: number) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n * 10) / 10)) : padrao
+}
+
+/** Confere a arte do editor: formato, fundo e até 40 elementos com tipo, posição, tamanho e opções conhecidas. */
+function limparArte(v: unknown) {
+  if (!v || typeof v !== 'object') return null
+  const a = v as Record<string, unknown>
+  const elementos = (Array.isArray(a.elementos) ? a.elementos : []).slice(0, 40).flatMap((x, i) => {
+    const e = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>
+    if (!TIPOS_ARTE.includes(e.tipo as string)) return []
+    const r: Record<string, unknown> = {
+      id: texto(e.id, 24) || `e${i}`, tipo: e.tipo,
+      x: numero(e.x, -700, 1300, 0), y: numero(e.y, -700, 1300, 0), w: numero(e.w, 4, 1400, 100), h: numero(e.h, 4, 1400, 100),
+    }
+    if (e.giro !== undefined) r.giro = numero(e.giro, -45, 45, 0)
+    if (e.opac !== undefined) r.opac = numero(e.opac, 0.05, 1, 1)
+    if (e.texto !== undefined) r.texto = textoNosIdiomas(e.texto, 160)
+    if (e.tam !== undefined) r.tam = numero(e.tam, 6, 160, 28)
+    if (e.peso !== undefined) r.peso = [400, 600, 800].includes(Number(e.peso)) ? Number(e.peso) : 800
+    if (e.alinhar !== undefined) r.alinhar = ['esq', 'centro', 'dir'].includes(e.alinhar as string) ? e.alinhar : 'esq'
+    if (e.destaque !== undefined) r.destaque = Boolean(e.destaque)
+    if (e.fonte !== undefined) r.fonte = ['titulo', 'texto', 'marca'].includes(e.fonte as string) ? e.fonte : 'titulo'
+    if (e.cor !== undefined) r.cor = CORES_ARTE.includes(e.cor as string) || /^#[0-9a-f]{6}$/i.test(String(e.cor)) ? e.cor : 'branco'
+    if (e.icone !== undefined) r.icone = nomeCurto(e.icone) ?? 'estrela'
+    if (e.valor !== undefined) r.valor = numero(e.valor, 0, 100, 75)
+    if (e.raio !== undefined) r.raio = numero(e.raio, 0, 999, 18)
+    if (e.contorno !== undefined) r.contorno = Boolean(e.contorno)
+    return [r]
+  })
+  if (!elementos.length) return null
+  return {
+    formato: a.formato === 'deitado' ? 'deitado' : 'em_pe',
+    fundo: FUNDOS_ARTE.includes(a.fundo as string) ? a.fundo : 'noite',
+    elementos,
+  }
+}
+
 /** Confere e limpa uma novidade vinda do painel: título curto, até 4 itens, ícone, cor, tela e onde aparece. */
 function limparNovidade(v: unknown) {
   const n = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
@@ -210,6 +252,7 @@ function limparNovidade(v: unknown) {
     cor: CORES_NOVIDADE.includes(n.cor as string) ? n.cor as string : 'marca',
     tela: nomeCurto(n.tela),
     onde: ONDE_NOVIDADE.includes(n.onde as string) ? n.onde as string : 'todos',
+    arte: limparArte(n.arte),
   }
 }
 

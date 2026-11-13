@@ -8,6 +8,7 @@ import { estiloLente, useLente } from './lib/useLente'
 import { Codigo } from './telas/Codigo'
 import { Contas } from './telas/Contas'
 import { Entrar } from './telas/Entrar'
+import { Novidades } from './telas/Novidades'
 import { Erros } from './telas/Erros'
 import { Ficha } from './telas/Ficha'
 import { Inicio } from './telas/Inicio'
@@ -114,6 +115,7 @@ export default function App() {
 const SECOES = [
   { id: 'inicio', nome: 'Início', href: '#/', icone: 'inicio' },
   { id: 'contas', nome: 'Contas', href: '#/contas', icone: 'pessoas' },
+  { id: 'novidades', nome: 'Novidades', href: '#/novidades', icone: 'estrela' },
   { id: 'erros', nome: 'Erros', href: '#/erros', icone: 'inseto' },
   { id: 'registro', nome: 'Registro', href: '#/registro', icone: 'historico' },
 ] as const
@@ -152,6 +154,7 @@ function Painel({ email, aoSair }: { email: string; aoSair: () => void }) {
         <main className="conteudo" data-entrada={entrada}>
           {secao === 'contas' && partes[1] ? <Ficha key={partes[1]} id={partes[1]} />
             : secao === 'contas' ? <Contas key={params.toString()} filtroInicial={params.get('filtro')} buscaInicial={params.get('busca')} />
+            : secao === 'novidades' ? <Novidades />
             : secao === 'erros' ? <Erros />
             : secao === 'registro' ? <Registro />
             : <Inicio />}

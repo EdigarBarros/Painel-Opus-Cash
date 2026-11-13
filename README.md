@@ -38,6 +38,11 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
   (só a contagem, nunca o conteúdo), tempo por dia e tempo, visitas e toques em cada tela. No Início, "Usando agora" e
   "Como o app é usado" (telas mais usadas, tutorial, jeitos de ver, idiomas e aparelhos de todo mundo). A foto de perfil
   aparece também na lista de contas e no topo da ficha.
+- **Novidades** (migração 31 do OpusCash + `04-novidades.sql`): o pop-up "Tem novidade!" que aparece **uma vez** no OpusCash
+  (site e app) para quem já tinha conta. Escolha o ícone grande, a cor, um título curto, até 4 itens (ícone + poucas
+  palavras), para onde o botão leva e onde aparece (site, app ou os dois), com a prévia ao lado igual ao que a pessoa vê.
+  Salve como rascunho ou publique. Só a mais recente publicada aparece; a lista mostra quantas pessoas já viram. Publicar não
+  pede versão nova do site nem do app (no app Android, vale a partir da 2.5.0).
 - **Reembolsos:** o Início lista os reembolsos feitos no Stripe (pelo painel ou direto no Stripe, cartão e Pix), com a conta
   de cada um; na aba Cartão e Stripe da ficha, cada cobrança mostra os reembolsos dela (valor, data e motivo).
 - **Contas:** busca por e-mail ou nome (atalho `/`), filtros com contagem (em teste, vence em 7 dias, cartão, liberados,
@@ -71,6 +76,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    Ela já põe `edigarbarros14@gmail.com` como administrador.
    Depois rode `supabase/migracoes/02-inicio.sql` (números novos da tela Início) e, com a migração 30 do OpusCash já rodada,
    `supabase/migracoes/03-uso.sql` (uso do app, foto e quem está online). Rodou a 01 de novo? Rode a 03 depois dela.
+   Com a migração 31 do OpusCash rodada, `supabase/migracoes/04-novidades.sql` (tela Novidades).
 2. **Função:** publique `supabase/functions/admin` **com** verificação de JWT. Usa o segredo `STRIPE_SECRET_KEY` que o
    OpusCash já tem (ler e mexer na assinatura, reembolsar, cancelar ao excluir). Opcional: `PAINEL_ORIGENS` com endereços extras do
    painel, separados por vírgula (localhost, `admin.opuscash.com.br` e `painel-opus-cash*.vercel.app` já valem).

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, mensagemDe } from '../lib/api'
+import { useDados, useDemorou } from '../lib/dados'
 import { useAviso } from '../lib/useAviso'
 import { fmtDataHora, haQuanto } from '../lib/formato'
 import { Carregando, ErroNaTela, Etiqueta } from '../ui'
@@ -15,15 +16,13 @@ const PERIODOS = [[7, '7 dias'], [30, '30 dias'], [90, '90 dias'], [365, '1 ano'
 /** Erros que quebraram a tela de alguém (o OpusCash grava em erros_app), agrupados pela mensagem. */
 export function Erros() {
   const [dias, setDias] = useState(30)
-  const [grupos, setGrupos] = useState<GrupoDeErro[] | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados, erro: falhou, recarregar: carregar } = useDados(`erros:${dias}`, () => api<GrupoDeErro[]>('erros', { dias }), { manterAnterior: true })
+  const grupos = dados ?? null
+  const erro = falhou && !dados ? falhou : null
+  const demorou = useDemorou()
   const [aberto, setAberto] = useState<string | null>(null)
   const [toast, avisar] = useAviso()
 
-  const carregar = useCallback(() => {
-    api<GrupoDeErro[]>('erros', { dias }).then((d) => { setGrupos(d); setErro(null) }).catch((e) => setErro(mensagemDe(e)))
-  }, [dias])
-  useEffect(carregar, [carregar])
 
   const marcar = async (mensagem: string, resolvido: boolean) => {
     try {
@@ -45,7 +44,7 @@ export function Erros() {
         ))}
       </div>
       {erro && <ErroNaTela erro={erro} aoTentar={carregar} />}
-      {!erro && !grupos && <Carregando />}
+      {!erro && !grupos && demorou && <Carregando />}
       {grupos && grupos.length === 0 && <p className="vazio">Nenhum erro neste período.</p>}
       {grupos && grupos.length > 0 && (
         <ul className="erros">

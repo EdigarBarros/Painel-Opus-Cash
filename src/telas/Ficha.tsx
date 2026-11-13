@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { api, mensagemDe } from '../lib/api'
+import { useDados, useDemorou } from '../lib/dados'
 import { useAviso } from '../lib/useAviso'
 import {
   corDoTom, fmtData, fmtDataHora, fmtDinheiro, haQuanto, hojeISO, ICONE_DA_ACAO, iniciais, NOME_DA_ACAO, pagaNoCartao, paraCentavos, situacao,
@@ -256,8 +257,9 @@ function ErrosDaConta({ erros }: { erros: FichaDados['erros'] }) {
 }
 
 export function Ficha({ id }: { id: string }) {
-  const [f, setF] = useState<FichaDados | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados: f, erro: falhou, recarregar: carregar } = useDados(`ficha:${id}`, () => api<FichaDados>('ficha', { id }))
+  const erro = falhou && !f ? falhou : null
+  const demorou = useDemorou()
   const [janela, setJanela] = useState<Janela | null>(null)
   const [aba, setAba] = useState<Aba>('geral')
   const [copiado, setCopiado] = useState(false)
@@ -265,11 +267,6 @@ export function Ficha({ id }: { id: string }) {
   const [agora, setAgora] = useState(() => Date.now())
   const refAbas = useRef<HTMLDivElement>(null)
   const lente = useLente(refAbas, 'button.ativo', `${aba}|${Boolean(f)}`)
-
-  const carregar = useCallback(() => {
-    api<FichaDados>('ficha', { id }).then((d) => { setF(d); setErro(null) }).catch((e) => setErro(mensagemDe(e)))
-  }, [id])
-  useEffect(carregar, [carregar])
 
   const terminar = (msg?: string) => {
     setJanela(null)
@@ -280,6 +277,7 @@ export function Ficha({ id }: { id: string }) {
 
   if (erro) return <ErroNaTela erro={erro} aoTentar={carregar} />
   if (!f) {
+    if (!demorou) return <div className="pagina-esperando" />
     return (
       <div className="pagina ficha" aria-busy="true">
         <div className="esqueleto" style={{ height: 22, width: 90 }} />

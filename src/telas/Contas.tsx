@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { api, mensagemDe } from '../lib/api'
+import { api } from '../lib/api'
+import { useDados, useDemorou } from '../lib/dados'
 import { corDoTom, fmtData, haQuanto, iniciais, situacao } from '../lib/formato'
 import { estiloLente, useLente } from '../lib/useLente'
 import { Icone } from '../pecas/Icone'
@@ -101,9 +102,10 @@ function LinhaConta({ c, i, vista }: { c: ContaResumo; i: number; vista: Vista }
 export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string | null; buscaInicial?: string | null }) {
   const [termo, setTermo] = useState(buscaInicial ?? '')
   const [buscado, setBuscado] = useState((buscaInicial ?? '').trim())
-  const [contas, setContas] = useState<ContaResumo[] | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const [buscando, setBuscando] = useState(false)
+  const { dados, erro: falhou, buscando, chaveDosDados } = useDados(`buscar:${buscado}`, () => api<ContaResumo[]>('buscar', { termo: buscado }), { manterAnterior: true })
+  const contas = dados ?? null
+  const erro = falhou && !dados ? falhou : null
+  const demorou = useDemorou()
   const [filtro, setFiltro] = useState<Filtro>(FILTROS.some((f) => f.id === filtroInicial) ? filtroInicial as Filtro : 'todos')
   const [ordem, setOrdem] = useState<Ordem>('novas')
   const [vista, setVista] = useState<Vista>(() => { try { return localStorage.getItem('painel-vista-contas') === 'cartoes' ? 'cartoes' : 'lista' } catch { return 'lista' } })
@@ -116,15 +118,6 @@ export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string
     const t = window.setTimeout(() => setBuscado(termo.trim()), 300)
     return () => window.clearTimeout(t)
   }, [termo])
-  useEffect(() => {
-    let cancelado = false
-    const t = window.setTimeout(() => { if (!cancelado) setBuscando(true) }, 0)
-    api<ContaResumo[]>('buscar', { termo: buscado })
-      .then((d) => { if (!cancelado) { setContas(d); setErro(null) } })
-      .catch((e) => { if (!cancelado) setErro(mensagemDe(e)) })
-      .finally(() => { if (!cancelado) setBuscando(false) })
-    return () => { cancelado = true; window.clearTimeout(t) }
-  }, [buscado])
   // "/" leva para a busca, como nos sites de busca
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
@@ -202,8 +195,8 @@ export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string
       </div>
 
       {erro && <ErroNaTela erro={erro} />}
-      {!erro && !contas && (
-        <div className={vista === 'lista' ? 'lista-contas' : 'grade-contas'}>
+      {!erro && !contas && demorou && (
+        <div className={`${vista === 'lista' ? 'lista-contas' : 'grade-contas'} esqueleto-lista`} aria-busy="true">
           {Array.from({ length: 6 }, (_, i) => <div key={i} className="esqueleto" style={{ height: vista === 'lista' ? 72 : 190 }} />)}
         </div>
       )}
@@ -216,7 +209,7 @@ export function Contas({ filtroInicial, buscaInicial }: { filtroInicial?: string
         </div>
       )}
       {contas && lista.length > 0 && (
-        <div key={`${filtro}-${ordem}-${vista}-${buscado}`} className={vista === 'lista' ? 'lista-contas' : 'grade-contas'}>
+        <div key={`${filtro}-${ordem}-${vista}-${chaveDosDados}`} className={vista === 'lista' ? 'lista-contas' : 'grade-contas'}>
           {lista.map((c, i) => <LinhaConta key={c.id} c={c} i={i} vista={vista} />)}
         </div>
       )}

@@ -305,8 +305,14 @@ function JanelaStripe({ id, email, janela, fimPeriodo, aoFechar, aoTerminar }: {
       return (
         <Modal titulo="Reembolsar a cobrança" aoFechar={aoFechar}>
           <FormularioDeAcao textoBotao={`Reembolsar ${janela.valor}`} perigo pode={temMotivo} aoTerminar={aoTerminar}
-            executar={async () => { await acao({ cobranca: janela.cobranca }); return 'Reembolso pedido ao Stripe.' }}>
-            <p>Devolve {janela.valor} para a pessoa (no cartão leva alguns dias para aparecer). O reembolso não mexe no acesso: se for o caso, cancele a assinatura ou tire o acesso também.</p>
+            executar={async () => {
+              const r = await acao({ cobranca: janela.cobranca })
+              const pix = r.pix as { ajustado?: boolean; ajustar_no_stripe?: boolean } | null
+              if (pix?.ajustado) return 'Reembolso pedido ao Stripe. Os dias do Pix saíram do acesso.'
+              if (pix?.ajustar_no_stripe) return 'Reembolso pedido. O Pix já virou assinatura no cartão: tire os dias no Stripe.'
+              return 'Reembolso pedido ao Stripe.'
+            }}>
+            <p>Devolve {janela.valor} para a pessoa (no cartão leva alguns dias para aparecer). Se for o Pix de 30 dias, os dias saem do acesso na hora. Se for a assinatura no cartão, o acesso fica: cancele a assinatura também, se for o caso.</p>
             <CampoMotivo valor={motivo} aoMudar={setMotivo} dica="Ex.: pagou o Pix já tendo cortesia" />
           </FormularioDeAcao>
         </Modal>

@@ -320,8 +320,19 @@ async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, un
       const c = await stripe(`charges/${cobranca}`)
       if (c.customer !== cus) throw new Recusa('Esta cobrança não é desta conta.')
       const r = await stripe('refunds', 'POST', { charge: cobranca })
-      resultado = { status: r.status, valor: r.amount, moeda: r.currency }
-      paraRegistro = { cobranca, valor: r.amount, moeda: r.currency, status: r.status }
+      // se a cobrança era o Pix de 30 dias, os dias saem do acesso (o webhook também faz isso; o banco só tira uma vez)
+      let pix: unknown = null
+      const pi = typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent?.id
+      if (pi && r.amount === c.amount) {
+        const sessao = (await stripe(`checkout/sessions?payment_intent=${pi}&limit=1`))?.data?.[0]
+        if (sessao?.metadata?.tipo === 'pix_30_dias') {
+          const { data, error } = await db.rpc('estornar_pix', { p_sessao: sessao.id })
+          doBanco(error)
+          pix = data
+        }
+      }
+      resultado = { status: r.status, valor: r.amount, moeda: r.currency, pix }
+      paraRegistro = { cobranca, valor: r.amount, moeda: r.currency, status: r.status, pix }
       break
     }
     case 'link_cartao': {

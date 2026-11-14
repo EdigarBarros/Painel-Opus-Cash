@@ -16,7 +16,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    mudam algo). Abrir uma ficha também fica registrado.
 4. **O painel não lê as finanças de ninguém.** Só conta, perfil, assinatura, pagamentos e erros.
 5. O suporte **nunca vê nem define senha**: manda o e-mail de senha nova ou gera o link para a pessoa criar a dela.
-6. Parado 30 minutos, o painel sai sozinho. O site não aparece no Google (`noindex`, `robots.txt`).
+6. O login fica até você clicar em Sair (só neste aparelho). O site não aparece no Google (`noindex`, `robots.txt`).
 
 ## O que cada tela faz
 

@@ -21,7 +21,7 @@ export const ouvirPerdaDeAcesso = (f: (motivo: 'login' | 'codigo') => void) => {
 type Resposta = { ok?: boolean; dados?: unknown; erro?: string; precisa_codigo?: boolean }
 
 /** Chama a função "admin" no servidor. É o único caminho do painel para o banco. */
-export async function api<T>(acao: string, dados: Record<string, unknown> = {}): Promise<T> {
+export async function api<T>(acao: string, dados: Record<string, unknown> = {}, renovou = false): Promise<T> {
   const { data, error } = await supabase.functions.invoke('admin', { body: { ...dados, acao } })
   if (!error) return ((data as Resposta)?.dados ?? data) as T
   // resposta que não é 2xx chega como erro, com o corpo em error.context
@@ -31,6 +31,11 @@ export async function api<T>(acao: string, dados: Record<string, unknown> = {}):
   if (ctx instanceof Response) {
     status = ctx.status
     corpo = await ctx.clone().json().catch(() => null)
+  }
+  // acesso vencido (computador dormiu, aba parada): renova e tenta de novo antes de dar o login por perdido
+  if (status === 401 && !renovou) {
+    const { data: r } = await supabase.auth.refreshSession()
+    if (r.session) return api<T>(acao, dados, true)
   }
   if (status === 401) aoPerderAcesso.forEach((f) => f('login'))
   if (corpo?.precisa_codigo) aoPerderAcesso.forEach((f) => f('codigo'))

@@ -6,6 +6,6 @@ const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || 'https:
 const chave = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || 'sb_publishable_QwryTMftFcPhWX-Ft742Dw_j5hvsHp5'
 
 export const supabase = createClient(url, chave, {
-  // login próprio do painel (não se mistura com o do site). Fica parado 30 minutos, sai sozinho (App.tsx).
+  // login próprio do painel (não se mistura com o do site). Fica entrado até a pessoa clicar em Sair.
   auth: { storageKey: 'painel-opuscash', persistSession: true, autoRefreshToken: true },
 })

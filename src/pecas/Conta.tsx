@@ -65,7 +65,6 @@ export function Conta({ email, aoSair, lado, compacta }: { email: string; aoSair
             <Segmentado largo rotulo="Animações" valor={movimento} aoMudar={(m) => definirMovimento(m)}
               opcoes={[['completo', <><Icone nome="estrela" tamanho={15} />Completas</>], ['reduzido', <><Icone nome="pausa" tamanho={15} />Reduzidas</>]]} />
           </div>
-          <p className="conta-menu-nota"><Icone nome="relogio" tamanho={14} />Parado 30 minutos, o painel sai sozinho.</p>
           <button type="button" role="menuitem" className="conta-sair" disabled={saindo} onClick={() => { setSaindo(true); aoSair() }}>
             <Icone nome="sair" tamanho={18} />{saindo ? 'Saindo…' : 'Sair do painel'}
           </button>

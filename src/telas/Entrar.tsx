@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Marca } from '../pecas/Marca'
 
-export function Entrar({ aviso }: { aviso?: string | null }) {
+export function Entrar() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -23,7 +23,6 @@ export function Entrar({ aviso }: { aviso?: string | null }) {
         <div className="entrada-marca"><Marca grande /></div>
         <h1>Entrar no painel</h1>
         <p className="sub">Acesso restrito à equipe de suporte. Use a mesma conta do OpusCash.</p>
-        {aviso && <p className="aviso-erro" role="alert">{aviso}</p>}
         <label className="campo">
           <span>E-mail</span>
           <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />

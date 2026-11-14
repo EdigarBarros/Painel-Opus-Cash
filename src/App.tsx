@@ -20,8 +20,6 @@ import { Icone } from './pecas/Icone'
 import { Marca } from './pecas/Marca'
 import { Carregando, ErroNaTela } from './ui'
 
-const PARADO_MAX = 30 * 60_000
-
 /** Nível do login lido do token (aal1 = só senha; aal2 = senha + código do celular). Quem decide de verdade é o servidor. */
 function nivelDoToken(token: string) {
   try {
@@ -49,7 +47,6 @@ export default function App() {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined)
   const [eu, setEu] = useState<Eu | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [avisoSaida, setAvisoSaida] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
 
   useEffect(() => {
@@ -69,34 +66,14 @@ export default function App() {
 
   // o servidor recusou no meio do uso: login caiu (volta ao início) ou falta o código (pede de novo)
   useEffect(() => ouvirPerdaDeAcesso((motivo) => {
-    if (motivo === 'login') { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut() }
+    if (motivo === 'login') { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut({ scope: 'local' }) }
     else setEu((e) => (e ? { ...e, nivel: 'aal1' } : e))
   }), [])
 
-  // parado 30 minutos: sai sozinho
-  useEffect(() => {
-    if (!sessao) return
-    let ultimo = Date.now()
-    const mexeu = () => { ultimo = Date.now() }
-    const eventos = ['pointerdown', 'keydown', 'mousemove', 'scroll', 'touchstart'] as const
-    eventos.forEach((ev) => window.addEventListener(ev, mexeu, { passive: true }))
-    const t = window.setInterval(() => {
-      if (Date.now() - ultimo > PARADO_MAX) {
-        setAvisoSaida('Você saiu sozinho depois de 30 minutos parado. Entre de novo.')
-        setEu(null)
-        esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut()
-      }
-    }, 30_000)
-    return () => {
-      eventos.forEach((ev) => window.removeEventListener(ev, mexeu))
-      window.clearInterval(t)
-    }
-  }, [sessao])
-
-  const sair = () => { setAvisoSaida(null); setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut() }
+  const sair = () => { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut({ scope: 'local' }) }
 
   if (sessao === undefined) return <Carregando />
-  if (!sessao) return <Entrar aviso={avisoSaida} />
+  if (!sessao) return <Entrar />
   if (erro) return <main className="entrada"><ErroNaTela erro={erro} aoTentar={() => setTentativa((n) => n + 1)} /><button className="link" onClick={sair}>Sair</button></main>
   if (!eu || eu.email !== sessao.user.email) return <Carregando />
   if (!eu.admin) {

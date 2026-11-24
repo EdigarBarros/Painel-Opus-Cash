@@ -15,8 +15,8 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
 3. **Tudo fica registrado** em `adm_registro`: quem, o quê, em qual conta, quando e o motivo (obrigatório nas ações que
    mudam algo). Abrir uma ficha também fica registrado.
 4. **O painel não lê as finanças de ninguém.** Só conta, perfil, assinatura, pagamentos e erros.
-5. O suporte **nunca vê nem define senha**: manda o e-mail de senha nova ou gera o link para a pessoa criar a dela.
-6. O login fica até você clicar em Sair (só neste aparelho). O site não aparece no Google (`noindex`, `robots.txt`).
+5. O suporte pode reenviar a recuperação ou a confirmação para o e-mail cadastrado da pessoa. A equipe não recebe o link, não confirma endereços manualmente e não troca o e-mail da conta pelo painel.
+6. A sessão fica na aba e é encerrada ao sair. O site pede novo login ao abrir uma nova aba. O painel usa `noindex` e `robots.txt`.
 
 ## O que cada tela faz
 
@@ -66,8 +66,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
   - *Acesso:* liberar 15/30/N dias ou até uma data (status `pix`, o mesmo do Pix de 30 dias do site: soma ao que sobrou),
     vitalício (`cortesia`), estender o teste, tirar o acesso. Pode registrar o pagamento recebido (valor, forma, data).
     Conta que paga no cartão: o acesso vem do Stripe e se mexe pelo quadro do Stripe (abaixo).
-  - *Login e senha:* e-mail de senha nova, link de senha nova (para mandar pelo WhatsApp), reenviar ou confirmar o
-    e-mail, trocar o e-mail, desconectar de todos os aparelhos, bloquear e desbloquear.
+  - *Login e senha:* enviar recuperação e reenviar confirmação ao e-mail cadastrado, desconectar de todos os aparelhos, bloquear e desbloquear.
   - *Stripe (cartão e Pix do site), lido na hora do Stripe:* situação da assinatura, cartão (bandeira e final), próxima
     cobrança, fatura em aberto com as tentativas e todas as cobranças. Ações: cancelar no fim do período ou agora (com a
     opção de já liberar dias, para quem passou a pagar por Pix), desfazer cancelamento, tentar cobrar de novo, copiar o
@@ -121,3 +120,9 @@ npm run dev
 ```
 
 Antes de publicar: `npx tsc -b`, `npm run lint` e `npm run build`.
+
+Para verificar as permissões de recuperação com serviços simulados:
+
+```bash
+deno test --allow-env --node-modules-dir=none --no-lock supabase/functions/admin/recuperacao.test.ts
+```

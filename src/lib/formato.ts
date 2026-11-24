@@ -67,6 +67,7 @@ export const pagaNoCartao = (status?: string | null) => ['trialing', 'active', '
 
 /** Nome de cada ação do registro, em português. */
 export const NOME_DA_ACAO: Record<string, string> = {
+  acao_iniciada: 'Iniciou uma ação sensível',
   ver_ficha: 'Abriu a ficha',
   acesso_dias: 'Liberou dias de acesso',
   acesso_ate: 'Liberou acesso até uma data',
@@ -124,6 +125,7 @@ export const corDoTom = (tom: Tom) => ({
 
 /** Ícone de cada ação do registro (src/pecas/Icone.tsx). */
 export const ICONE_DA_ACAO: Record<string, string> = {
+  acao_iniciada: 'historico',
   ver_ficha: 'olho', acesso_dias: 'calendario', acesso_ate: 'calendario', acesso_vitalicio: 'infinito', acesso_teste: 'ampulheta',
   acesso_revogar: 'cadeado', anotar: 'lapis', senha_email: 'email', senha_link: 'copiar', reenviar_confirmacao: 'email',
   confirmar_email: 'check', trocar_email: 'trocar', bloquear: 'cadeado', desbloquear: 'escudo', encerrar_sessoes: 'sair',

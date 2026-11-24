@@ -5,7 +5,37 @@ import { createClient } from '@supabase/supabase-js'
 const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || 'https://jyadqrepdueiiyskexmq.supabase.co'
 const chave = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || 'sb_publishable_QwryTMftFcPhWX-Ft742Dw_j5hvsHp5'
 
+const MARCADOR = 'painel-opuscash.sessao-chave'
+const sufixos = ['', '-user', '-code-verifier']
+const sessao = (() => {
+  try {
+    for (const sufixo of sufixos) localStorage.removeItem('painel-opuscash' + sufixo)
+  } catch { /* sem acesso ao armazenamento antigo */ }
+  try {
+    const armazenamento = sessionStorage
+    const chave = armazenamento.getItem(MARCADOR) || `painel-opuscash-sessao-${crypto.randomUUID()}`
+    armazenamento.setItem(MARCADOR, chave)
+    return { chave, armazenamento }
+  } catch { return { chave: MARCADOR, armazenamento: undefined } }
+})()
+
 export const supabase = createClient(url, chave, {
-  // login próprio do painel (não se mistura com o do site). Fica entrado até a pessoa clicar em Sair.
-  auth: { storageKey: 'painel-opuscash', persistSession: true, autoRefreshToken: true },
+  auth: {
+    storageKey: sessao.chave,
+    storage: sessao.armazenamento,
+    persistSession: Boolean(sessao.armazenamento),
+    detectSessionInUrl: false,
+  },
 })
+
+export async function sairDoPainel() {
+  try {
+    await supabase.auth.stopAutoRefresh()
+    await supabase.auth.signOut({ scope: 'local' })
+  } catch { /* a sessão local também é removida quando o servidor está indisponível */ }
+  try {
+    for (const sufixo of sufixos) sessao.armazenamento?.removeItem(sessao.chave + sufixo)
+  } finally {
+    location.reload()
+  }
+}

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, mensagemDe, ouvirPerdaDeAcesso } from './lib/api'
 import { esquecerTudo, useDados } from './lib/dados'
 import { entrarNaTela, esquecerVisitas } from './lib/visitas'
-import { supabase } from './lib/supabase'
+import { sairDoPainel, supabase } from './lib/supabase'
 import { estiloLente, useLente } from './lib/useLente'
 import { Codigo } from './telas/Codigo'
 import { Contas } from './telas/Contas'
@@ -66,11 +66,11 @@ export default function App() {
 
   // o servidor recusou no meio do uso: login caiu (volta ao início) ou falta o código (pede de novo)
   useEffect(() => ouvirPerdaDeAcesso((motivo) => {
-    if (motivo === 'login') { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut({ scope: 'local' }) }
+    if (motivo === 'login') { setEu(null); esquecerTudo(); esquecerVisitas(); void sairDoPainel() }
     else setEu((e) => (e ? { ...e, nivel: 'aal1' } : e))
   }), [])
 
-  const sair = () => { setEu(null); esquecerTudo(); esquecerVisitas(); void supabase.auth.signOut({ scope: 'local' }) }
+  const sair = () => { setEu(null); esquecerTudo(); esquecerVisitas(); void sairDoPainel() }
 
   if (sessao === undefined) return <Carregando />
   if (!sessao) return <Entrar />

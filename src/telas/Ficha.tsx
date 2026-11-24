@@ -34,8 +34,8 @@ interface FichaDados {
   presenca?: { visto_em: string; aberto: boolean; tela: string | null; online: boolean } | null
 }
 
-type Janela = 'liberar' | 'teste' | 'revogar' | 'senha_email' | 'senha_link' | 'confirmar_email' | 'reenviar_confirmacao'
-  | 'trocar_email' | 'bloquear' | 'desbloquear' | 'encerrar_sessoes' | 'excluir'
+type Janela = 'liberar' | 'teste' | 'revogar' | 'senha_email' | 'reenviar_confirmacao'
+  | 'bloquear' | 'desbloquear' | 'encerrar_sessoes' | 'excluir'
 type Aba = 'geral' | 'uso' | 'cartao' | 'pagamentos' | 'suporte' | 'erros'
 
 const FORMAS = [['pix', 'Pix'], ['transferencia', 'Transferência'], ['dinheiro', 'Dinheiro'], ['outro', 'Outro']] as const
@@ -210,11 +210,8 @@ function Login({ f, bloqueada, aoAbrir }: { f: FichaDados; bloqueada: boolean; a
         <Situacao ok={!bloqueada} icone={bloqueada ? 'cadeado' : 'escudo'} titulo={bloqueada ? 'Bloqueada pelo suporte' : 'Conta livre'} texto={bloqueada ? 'Não consegue entrar até desbloquear' : 'Entra normalmente'} />
       </ul>
       <div className="azulejos">
-        <Azulejo icone="email" titulo="E-mail de senha nova" texto="O mesmo do “Esqueci a senha”" aoClicar={() => aoAbrir('senha_email')} />
-        <Azulejo icone="copiar" titulo="Link de senha nova" texto="Para mandar pelo WhatsApp" aoClicar={() => aoAbrir('senha_link')} />
-        {!c.confirmado_em && <Azulejo icone="email" titulo="Reenviar confirmação" aoClicar={() => aoAbrir('reenviar_confirmacao')} />}
-        {!c.confirmado_em && <Azulejo icone="check" titulo="Confirmar e-mail" texto="Sem o link" aoClicar={() => aoAbrir('confirmar_email')} />}
-        {!c.admin && <Azulejo icone="trocar" titulo="Trocar e-mail" texto="Perdeu o e-mail antigo" aoClicar={() => aoAbrir('trocar_email')} />}
+        {!c.admin && <Azulejo icone="email" titulo="E-mail de senha nova" texto="Enviado ao endereço cadastrado" aoClicar={() => aoAbrir('senha_email')} />}
+        {!c.admin && !c.confirmado_em && <Azulejo icone="email" titulo="Reenviar confirmação" aoClicar={() => aoAbrir('reenviar_confirmacao')} />}
         {c.sessoes > 0 && <Azulejo icone="sair" titulo="Desconectar aparelhos" texto="Sai de todos" aoClicar={() => aoAbrir('encerrar_sessoes')} />}
         {bloqueada
           ? <Azulejo icone="escudo" titulo="Desbloquear conta" aoClicar={() => aoAbrir('desbloquear')} />
@@ -474,18 +471,11 @@ export function Ficha({ id }: { id: string }) {
           texto={`Vai para ${f.conta.email} o mesmo e-mail do "Esqueci minha senha". A pessoa cria a senha nova sozinha: ninguém do suporte vê ou escolhe a senha.`}
           executar={async () => { await api('senha_email', { id }); return 'E-mail de senha nova enviado.' }} />
       )}
-      {janela === 'senha_link' && <LinkDeSenha id={id} email={f.conta.email} aoFechar={() => setJanela(null)} aoTerminar={terminar} />}
       {janela === 'reenviar_confirmacao' && (
         <AcaoSimples titulo="Reenviar confirmação" botao="Reenviar e-mail" aoFechar={() => setJanela(null)} aoTerminar={terminar}
           texto={`Manda de novo para ${f.conta.email} o e-mail de confirmar a conta.`}
           executar={async () => { await api('reenviar_confirmacao', { id }); return 'Confirmação reenviada.' }} />
       )}
-      {janela === 'confirmar_email' && (
-        <AcaoComMotivo titulo="Confirmar o e-mail sem o link" botao="Confirmar e-mail" aoFechar={() => setJanela(null)} aoTerminar={terminar}
-          texto="Use só quando tiver certeza de que o e-mail é da pessoa (ela falou com você por ele, por exemplo)."
-          executar={async (motivo) => { await api('confirmar_email', { id, motivo }); return 'E-mail confirmado.' }} />
-      )}
-      {janela === 'trocar_email' && <TrocarEmail id={id} atual={f.conta.email} aoFechar={() => setJanela(null)} aoTerminar={terminar} />}
       {janela === 'encerrar_sessoes' && (
         <AcaoSimples titulo="Desconectar de todos os aparelhos" botao="Desconectar" aoFechar={() => setJanela(null)} aoTerminar={terminar}
           texto="A pessoa precisa entrar de novo em todos os aparelhos (pode levar até uma hora para cair em todos). Útil se ela perdeu o celular."
@@ -644,51 +634,6 @@ function EstenderTeste({ f, aoFechar, aoTerminar }: PropsJanela & { f: FichaDado
         </label>
         {ok && <p className="previa">O teste vai até <strong>{fmtDataHora(new Date(base + n * DIA).toISOString())}</strong>.</p>}
         <CampoMotivo valor={motivo} aoMudar={setMotivo} />
-      </FormularioDeAcao>
-    </Modal>
-  )
-}
-
-function LinkDeSenha({ id, email, aoFechar, aoTerminar }: PropsJanela & { id: string; email: string }) {
-  const [motivo, setMotivo] = useState('')
-  const [link, setLink] = useState<string | null>(null)
-  const [copiado, setCopiado] = useState(false)
-  if (link) {
-    return (
-      <Modal titulo="Link de senha nova" aoFechar={() => aoTerminar()}>
-        <p>Mande este link só para {email}, por um canal em que você tem certeza de que é a pessoa. Ele vale uma vez e expira em pouco tempo.</p>
-        <textarea className="link-gerado" readOnly value={link} rows={4} onFocus={(e) => e.currentTarget.select()} />
-        <div className="form-botoes">
-          <button className="botao principal" onClick={async () => { await navigator.clipboard.writeText(link); setCopiado(true) }}>
-            {copiado ? 'Copiado' : 'Copiar link'}
-          </button>
-        </div>
-      </Modal>
-    )
-  }
-  return (
-    <Modal titulo="Gerar link de senha nova" aoFechar={aoFechar}>
-      <FormularioDeAcao textoBotao="Gerar link" pode={motivo.trim().length > 0} aoTerminar={() => {}}
-        executar={async () => { const r = await api<{ link: string }>('senha_link', { id, motivo }); setLink(r.link) }}>
-        <p>Para quando o e-mail não chega: o painel gera o link e você manda pelo WhatsApp. A pessoa abre e cria a senha nova sozinha.</p>
-        <CampoMotivo valor={motivo} aoMudar={setMotivo} dica="Ex.: e-mail não chega, pediu pelo WhatsApp" />
-      </FormularioDeAcao>
-    </Modal>
-  )
-}
-
-function TrocarEmail({ id, atual, aoFechar, aoTerminar }: PropsJanela & { id: string; atual: string }) {
-  const [email, setEmail] = useState('')
-  const [motivo, setMotivo] = useState('')
-  return (
-    <Modal titulo="Trocar o e-mail da conta" aoFechar={aoFechar}>
-      <FormularioDeAcao textoBotao="Trocar e-mail" pode={email.includes('@') && motivo.trim().length > 0} aoTerminar={aoTerminar}
-        executar={async () => { await api('trocar_email', { id, email, motivo }); return 'E-mail trocado.' }}>
-        <p>Para quem perdeu o acesso a <strong>{atual}</strong>. A conta passa a entrar pelo e-mail novo na hora, já confirmado. Faça isso só depois de ter certeza de que é a dona da conta.</p>
-        <label className="campo"><span>E-mail novo</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <CampoMotivo valor={motivo} aoMudar={setMotivo} dica="Ex.: perdeu o e-mail antigo; confirmou o CPF do Pix" />
       </FormularioDeAcao>
     </Modal>
   )

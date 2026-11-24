@@ -51,15 +51,22 @@ const motivoObrigatorio = (v: unknown) => {
   return m
 }
 
-type Admin = { id: string; email: string }
+type Admin = { id: string; email: string; tentativa?: string }
 
 async function registrar(db: SupabaseClient, admin: Admin, acao: string, alvo: { id?: string; email?: string } | null,
   motivo?: string | null, antes?: unknown, depois?: unknown) {
   const { error } = await db.from('adm_registro').insert({
     admin_id: admin.id, admin_email: admin.email, acao, alvo_id: alvo?.id ?? null, alvo_email: alvo?.email ?? null,
-    motivo: motivo || null, antes: antes ?? null, depois: depois ?? null,
+    motivo: motivo || null, antes: antes ?? null,
+    depois: admin.tentativa ? { tentativa: admin.tentativa, resultado: depois ?? null } : depois ?? null,
   })
   if (error) throw new Error(`não foi possível registrar a ação: ${error.message}`)
+}
+
+async function registrarInicio(db: SupabaseClient, admin: Admin, acao: string, alvo: { id: string; email?: string }, motivo?: string | null) {
+  const tentativa = crypto.randomUUID()
+  await registrar(db, admin, 'acao_iniciada', alvo, motivo, null, { acao, tentativa })
+  return { ...admin, tentativa }
 }
 
 async function contaAlvo(db: SupabaseClient, id: string) {
@@ -283,6 +290,8 @@ async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, un
   }
   let resultado: Record<string, unknown> = { ok: true }
   let paraRegistro: Record<string, unknown> = {}
+  const alvo = { id, email: u.email }
+  const comRegistro = await registrarInicio(db, admin, `stripe_${tipo}`, alvo, motivo)
 
   switch (tipo) {
     case 'cancelar_fim':
@@ -302,7 +311,7 @@ async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, un
         resultado = { status: paga.status }
       } catch (e) {
         // a tentativa conta mesmo quando o cartão recusa: fica no registro com o motivo da recusa
-        await registrar(db, admin, 'stripe_cobrar_de_novo', { id, email: u.email }, motivo, null, { fatura, erro: (e as Error).message })
+        await registrar(db, comRegistro, 'stripe_cobrar_de_novo', alvo, motivo, null, { fatura, erro: (e as Error).message })
         if (sid) await sincronizarAssinatura(db, id, sid)
         throw e
       }
@@ -331,7 +340,7 @@ async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, un
       // se a cobrança era o Pix de 30 dias, os dias saem do acesso (o webhook também faz isso; o banco só tira uma vez)
       let pix: unknown = null
       const pi = typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent?.id
-      if (pi && r.amount === c.amount) {
+      if (pi && r.status === 'succeeded' && r.amount === c.amount) {
         const sessao = (await stripe(`checkout/sessions?payment_intent=${pi}&limit=1`))?.data?.[0]
         if (sessao?.metadata?.tipo === 'pix_30_dias') {
           const { data, error } = await db.rpc('estornar_pix', { p_sessao: sessao.id })
@@ -354,7 +363,7 @@ async function acaoStripe(db: SupabaseClient, admin: Admin, p: Record<string, un
   if (sid && ['cancelar_fim', 'desfazer_cancelamento', 'cancelar_agora', 'cobrar_de_novo', 'dias_gratis'].includes(tipo)) {
     await sincronizarAssinatura(db, id, sid)
   }
-  await registrar(db, admin, `stripe_${tipo}`, { id, email: u.email }, motivo, { status: ass?.status }, paraRegistro)
+  await registrar(db, comRegistro, `stripe_${tipo}`, alvo, motivo, { status: ass?.status }, paraRegistro)
   return resultado
 }
 
@@ -547,17 +556,25 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const u = await contaAlvo(db, uuid(p.id))
       const motivo = motivoObrigatorio(p.motivo)
       if (acao === 'bloquear') await naoEhAdmin(db, u.id)
+      const alvo = { id: u.id, email: u.email }
+      const comRegistro = await registrarInicio(db, admin, acao, alvo, motivo)
       const { error } = await db.auth.admin.updateUserById(u.id, { ban_duration: acao === 'bloquear' ? '876000h' : 'none' })
       if (error) throw new Recusa(error.message)
-      if (acao === 'bloquear') await db.rpc('adm_encerrar_sessoes', { p_user: u.id })
-      await registrar(db, admin, acao, { id: u.id, email: u.email }, motivo)
+      if (acao === 'bloquear') {
+        const { error: erroDasSessoes } = await db.rpc('adm_encerrar_sessoes', { p_user: u.id })
+        doBanco(erroDasSessoes)
+      }
+      await registrar(db, comRegistro, acao, alvo, motivo)
       return { ok: true }
     }
     case 'encerrar_sessoes': {
       const u = await contaAlvo(db, uuid(p.id))
+      const alvo = { id: u.id, email: u.email }
+      const motivo = texto(p.motivo) || null
+      const comRegistro = await registrarInicio(db, admin, acao, alvo, motivo)
       const { data, error } = await db.rpc('adm_encerrar_sessoes', { p_user: u.id })
       doBanco(error)
-      await registrar(db, admin, 'encerrar_sessoes', { id: u.id, email: u.email }, texto(p.motivo) || null, null, { sessoes: data })
+      await registrar(db, comRegistro, acao, alvo, motivo, null, { sessoes: data })
       return { sessoes: data }
     }
     case 'excluir': {
@@ -566,7 +583,10 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const motivo = motivoObrigatorio(p.motivo)
       await naoEhAdmin(db, u.id)
       if (texto(p.confirmar, 254).toLowerCase() !== (u.email ?? '').toLowerCase()) throw new Recusa('Digite o e-mail da conta para confirmar.')
-      const { data: ass } = await db.from('assinaturas').select('*').eq('user_id', u.id).maybeSingle()
+      const { data: ass, error: erroAssinatura } = await db.from('assinaturas').select('*').eq('user_id', u.id).maybeSingle()
+      if (erroAssinatura) throw new Recusa('Não foi possível conferir a assinatura.', 503)
+      const alvo = { id: u.id, email: u.email }
+      const comRegistro = await registrarInicio(db, admin, acao, alvo, motivo)
       if (ass?.stripe_subscription_id && ass.status !== 'cortesia' && !['canceled', 'incomplete_expired'].includes(ass.status)) {
         const r = await fetch(`https://api.stripe.com/v1/subscriptions/${ass.stripe_subscription_id}`, {
           method: 'DELETE', headers: { Authorization: `Bearer ${Deno.env.get('STRIPE_SECRET_KEY')}` },
@@ -579,7 +599,7 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       const { error } = await db.auth.admin.deleteUser(u.id)
       if (error) throw new Recusa(error.message, 500)
       // o registro não tem chave para a conta: continua existindo depois de ela ser apagada, com o que ela tinha
-      await registrar(db, admin, 'excluir', { id: u.id, email: u.email }, motivo, { assinatura: ass })
+      await registrar(db, comRegistro, acao, alvo, motivo, { assinatura: ass })
       return { ok: true }
     }
     case 'stripe':

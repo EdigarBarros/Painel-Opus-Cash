@@ -19,16 +19,16 @@ try {
 }
 assert.ok(atender)
 
-function acao(acao: string, id = cliente.id, aal = 'aal2', usuario = operador) {
+function acao(acao: string, id = cliente.id, aal = 'aal2', usuario = operador, campos: Record<string, unknown> = {}) {
   const corpo = btoa(JSON.stringify({ sub: usuario.id, aal })).replace(/=+$/, '')
   return atender!(new Request('https://funcoes-de-teste.example/admin', {
     method: 'POST',
     headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiJ9.${corpo}.assinatura-de-teste` },
-    body: JSON.stringify({ acao, id, email: 'outro@example.com' }),
+    body: JSON.stringify({ acao, id, email: 'outro@example.com', ...campos }),
   }))
 }
 
-function simularAuth({ usuario = operador, falhaAoVerificarAlvo = false } = {}) {
+function simularAuth({ usuario = operador, falhaAoVerificarAlvo = false, falhaNoRegistro = false } = {}) {
   const eventos: Array<{ tipo: string; corpo: unknown }> = []
   const fetchOriginal = globalThis.fetch
   globalThis.fetch = async (input, init) => {
@@ -39,6 +39,14 @@ function simularAuth({ usuario = operador, falhaAoVerificarAlvo = false } = {}) 
     if (url.pathname.startsWith('/auth/v1/admin/users/') && req.method === 'GET') {
       const alvo = [cliente, segundoAdmin].find((u) => url.pathname.endsWith(u.id))
       return alvo ? Response.json(alvo) : new Response(null, { status: 404 })
+    }
+    if (url.pathname === `/auth/v1/admin/users/${cliente.id}` && req.method === 'PUT') {
+      eventos.push({ tipo: 'bloqueio', corpo: await req.json() })
+      return Response.json(cliente)
+    }
+    if (url.pathname === '/rest/v1/rpc/adm_encerrar_sessoes') {
+      eventos.push({ tipo: 'encerrar_sessoes', corpo: await req.json() })
+      return Response.json(1)
     }
     if (url.pathname === '/rest/v1/adm_admins') {
       const id = url.searchParams.get('user_id')?.slice(3)
@@ -55,6 +63,7 @@ function simularAuth({ usuario = operador, falhaAoVerificarAlvo = false } = {}) 
     }
     if (url.pathname === '/rest/v1/adm_registro') {
       eventos.push({ tipo: 'auditoria', corpo: await req.json() })
+      if (falhaNoRegistro) return Response.json({ message: 'Auditoria indisponível na simulação' }, { status: 500 })
       return Response.json([], { status: 201 })
     }
     eventos.push({ tipo: `inesperado: ${req.method} ${url.pathname}`, corpo: null })
@@ -107,5 +116,29 @@ Deno.test('uma falha ao verificar o destino interrompe a recuperação', async (
   try {
     assert.equal((await acao('senha_email')).status, 503)
     assert.deepEqual(mock.eventos, [])
+  } finally { mock.restaurar() }
+})
+
+Deno.test('bloqueio exige registro inicial e vincula a conclusão à tentativa', async () => {
+  const mock = simularAuth()
+  try {
+    const resp = await acao('bloquear', cliente.id, 'aal2', operador, { motivo: 'Verificação local' })
+    assert.equal(resp.status, 200)
+    assert.deepEqual(mock.eventos.map((e) => e.tipo), ['auditoria', 'bloqueio', 'encerrar_sessoes', 'auditoria'])
+    const inicio = mock.eventos[0].corpo as { acao: string; depois: { tentativa: string } }
+    const fim = mock.eventos[3].corpo as typeof inicio
+    assert.equal(inicio.acao, 'acao_iniciada')
+    assert.equal(fim.acao, 'bloquear')
+    assert.ok(inicio.depois.tentativa)
+    assert.equal(fim.depois.tentativa, inicio.depois.tentativa)
+  } finally { mock.restaurar() }
+})
+
+Deno.test('a falha no registro inicial impede o bloqueio', async () => {
+  const mock = simularAuth({ falhaNoRegistro: true })
+  try {
+    const resp = await acao('bloquear', cliente.id, 'aal2', operador, { motivo: 'Verificação local' })
+    assert.equal(resp.status, 500)
+    assert.deepEqual(mock.eventos.map((e) => e.tipo), ['auditoria'])
   } finally { mock.restaurar() }
 })

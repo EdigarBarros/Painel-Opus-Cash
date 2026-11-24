@@ -8,6 +8,7 @@ import { ICONES } from '../lib/iconesDoApp'
 import { Icone } from '../pecas/Icone'
 import { ArteAjustada, TAMANHO, type Arte } from '../pecas/ArteNovidade'
 import { Segmentado } from '../pecas/Segmentado'
+import { CenaNovidade, ehCena, SO_COMPUTADOR, type NomeDaCena } from '../pecas/CenaNovidade'
 import { arteInicial, EditorArte } from './EditorArte'
 import { ErroNaTela, Etiqueta, Modal } from '../ui'
 
@@ -57,7 +58,34 @@ function PopupDeArte({ arte, temBotaoVer, largura }: { arte: Arte; temBotaoVer: 
   )
 }
 
+const ROTULOS_DA_CENA = {
+  antes: 'Antes', depois: 'Agora', tudoJunto: 'Tudo junto', fatura: 'Fatura', compras: 'Compras', pagas: 'Pagas', limite: 'Limite', verDeNovo: 'Ver de novo',
+}
+const NOME_DA_CENA: Record<NomeDaCena, string> = { 'carteira-cartoes': 'Cartões na carteira (antes e depois)' }
+
+/** O pop-up com uma animação pronta do OpusCash (arte.animacao), como a pessoa vê. */
+function PopupDeCena({ r, nome, largura }: { r: Rascunho; nome: NomeDaCena; largura?: number }) {
+  return (
+    <div className="novidade novidade-cena novidade-em-previa" style={largura ? { width: largura } : undefined}>
+      <CenaNovidade nome={nome} rotulos={ROTULOS_DA_CENA} />
+      <span className="novidade-x" aria-hidden="true"><Icone nome="fechar" tamanho={16} /></span>
+      <div className="novidade-cena-texto">
+        <span className="novidade-selo"><Icone nome="estrela" tamanho={13} />Novidade</span>
+        <h2 className="novidade-titulo">{r.titulo.pt}</h2>
+        {r.itens[0]?.texto.pt && <p>{r.itens[0].texto.pt}</p>}
+      </div>
+      <div className="novidade-botoes">
+        {r.tela && <button type="button" className="novidade-depois" tabIndex={-1}>Depois</button>}
+        <button type="button" className="novidade-ok" tabIndex={-1}>{r.tela ? 'Ver agora' : 'Legal!'}{r.tela && <Icone nome="seta" tamanho={17} />}</button>
+      </div>
+    </div>
+  )
+}
+
 function Previa({ r, pequena }: { r: Rascunho; pequena?: boolean }) {
+  if (ehCena(r.arte?.animacao)) {
+    return <div className={`novidade-previa ${pequena ? 'pequena com-arte' : ''}`}><PopupDeCena r={r} nome={r.arte.animacao} largura={pequena ? 300 : undefined} /></div>
+  }
   if (r.arte?.elementos?.length) {
     return <div className={`novidade-previa ${pequena ? 'pequena com-arte' : ''}`}><PopupDeArte arte={r.arte} temBotaoVer={Boolean(r.tela)} largura={pequena ? 250 : undefined} /></div>
   }
@@ -110,7 +138,9 @@ function CampoIdiomas({ valor, aoMudar, max, rotulo, dica, traducoes }: {
 
 function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | null; aoTerminar: (msg?: string) => void }) {
   const [r, setR] = useState<Rascunho>(inicial)
-  const [modo, setModo] = useState<'arte' | 'simples'>(inicial.arte?.elementos?.length ? 'arte' : 'simples')
+  // novidade com animação pronta do OpusCash: o editor não mexe nela, só no texto, para onde leva e onde aparece
+  const cena = ehCena(inicial.arte?.animacao) ? inicial.arte!.animacao as NomeDaCena : null
+  const [modo, setModo] = useState<'arte' | 'simples' | 'cena'>(cena ? 'cena' : inicial.arte?.elementos?.length ? 'arte' : 'simples')
   const [arte, setArte] = useState<Arte>(inicial.arte?.elementos?.length ? inicial.arte : arteInicial())
   const [vendo, setVendo] = useState(false)
   const [traducoes, setTraducoes] = useState(Boolean(inicial.titulo.en || inicial.titulo.es))
@@ -124,7 +154,7 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
     if (modo === 'arte' && !arte.elementos.length) return setErro('A arte está vazia: ponha pelo menos um elemento.')
     setEnviando(publicar ? 'publicar' : 'salvar')
     try {
-      const { id: novoId } = await api<{ id: number }>('novidade_salvar', { id, novidade: { ...r, arte: modo === 'arte' ? arte : null } })
+      const { id: novoId } = await api<{ id: number }>('novidade_salvar', { id, novidade: { ...r, arte: modo === 'cena' ? inicial.arte : modo === 'arte' ? arte : null } })
       if (publicar) await api('novidade_publicar', { id: novoId, publicar: true })
       aoTerminar(publicar ? 'Novidade publicada: aparece na próxima vez que cada pessoa abrir o OpusCash.' : 'Rascunho salvo.')
     } catch (e) {
@@ -139,8 +169,21 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
       <div className="editor-form">
         <header className="cartao-topo">
           <h2><Icone nome="lapis" tamanho={18} />{id ? 'Editar novidade' : 'Nova novidade'}</h2>
-          <Segmentado rotulo="Estilo" valor={modo} aoMudar={setModo} opcoes={[['arte', 'Arte livre'], ['simples', 'Cartão simples']]} />
+          {modo !== 'cena' && <Segmentado rotulo="Estilo" valor={modo} aoMudar={setModo} opcoes={[['arte', 'Arte livre'], ['simples', 'Cartão simples']]} />}
         </header>
+
+        {modo === 'cena' && cena && (
+          <>
+            <p className="nota">
+              Esta novidade usa uma animação pronta do OpusCash: <b>{NOME_DA_CENA[cena]}</b>. A animação é feita no código do app;
+              aqui dá para mudar o título, o texto, para onde o botão leva e onde aparece.
+              {SO_COMPUTADOR.includes(cena) && ' Ela mostra uma tela do computador: no celular, o pop-up não aparece.'}
+            </p>
+            <CampoIdiomas rotulo="Título" dica="curto, até 60 letras" max={60} valor={r.titulo} traducoes={traducoes} aoMudar={(titulo) => setR({ ...r, titulo })} />
+            <CampoIdiomas rotulo="Texto embaixo da animação" max={160} valor={r.itens[0]?.texto ?? { pt: '' }} traducoes={traducoes}
+              aoMudar={(texto) => setR({ ...r, itens: [{ icone: r.itens[0]?.icone ?? 'cartao', texto }] })} />
+          </>
+        )}
 
         {modo === 'arte' && (
           <>
@@ -212,6 +255,12 @@ function Editor({ inicial, id, aoTerminar }: { inicial: Rascunho; id: number | n
         <aside className="editor-previa">
           <p className="uso-rotulo">Como a pessoa vê</p>
           <Previa r={{ ...r, arte: null }} />
+        </aside>
+      )}
+      {modo === 'cena' && (
+        <aside className="editor-previa">
+          <p className="uso-rotulo">Como a pessoa vê</p>
+          <Previa r={r} />
         </aside>
       )}
       {vendo && (

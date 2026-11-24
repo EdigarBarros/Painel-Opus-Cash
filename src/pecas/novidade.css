@@ -118,3 +118,14 @@
 .novidade.novidade-arte { padding: 0 0 16px; gap: 14px; }
 .novidade.novidade-arte .novidade-botoes { padding: 0 16px; width: auto; justify-self: stretch; box-sizing: border-box; }
 .novidade.novidade-arte .arte-ajustada { justify-self: stretch; }
+
+/* pop-up com uma cena animada pronta (CenaNovidade.tsx): a cena em cima, o texto e os botões embaixo */
+.novidade.novidade-cena { width: min(620px, 100%); padding: 0 0 20px; gap: 12px; }
+.novidade.novidade-cena .cn { justify-self: stretch; }
+.novidade-cena-texto { display: grid; justify-items: center; gap: 6px; padding: 4px 26px 0; }
+.novidade-cena-texto .novidade-selo { position: static; }
+.novidade-cena-texto p { margin: 0; max-width: 46ch; font-size: 14.5px; line-height: 1.5; color: var(--texto-2); animation: novidade-sobe .6s var(--mola, ease) .35s both; }
+.novidade.novidade-cena .novidade-botoes { padding: 0 22px; width: auto; justify-self: stretch; box-sizing: border-box; }
+.novidade.novidade-cena .novidade-x { z-index: 12; }
+.novidade-cena-texto .novidade-selo { color: var(--texto-2); background: var(--preench-3); border-color: var(--borda); }
+.novidade-cena-texto .novidade-selo svg { color: #d9a441; }

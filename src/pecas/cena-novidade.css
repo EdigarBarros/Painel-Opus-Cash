@@ -1,0 +1,142 @@
+/* Cenas animadas das novidades (CenaNovidade.tsx). Cores fixas: a cena é igual no tema claro e no escuro.
+   Medidas em cqw (largura do palco ou do plano), para a cena encolher inteira com o pop-up.
+   Copiado no painel de suporte (src/pecas/). Mudou aqui? Copie para lá também. */
+
+.cn { position: relative; container-type: inline-size; width: 100%; }
+.cn-palco {
+  position: relative; width: 100%; aspect-ratio: 2 / 1; overflow: hidden; perspective: 160cqw;
+  background:
+    radial-gradient(70% 90% at 72% 20%, rgba(236, 112, 0, .16), transparent 60%),
+    radial-gradient(60% 80% at 15% 90%, rgba(138, 43, 226, .18), transparent 60%),
+    linear-gradient(180deg, #0d1222, #070a14);
+  --t: 10s;
+}
+/* chão quadriculado sumindo ao longe */
+.cn-chao {
+  position: absolute; left: -20%; right: -20%; bottom: -30%; height: 75%; transform: rotateX(72deg); transform-origin: bottom;
+  background-image: linear-gradient(rgba(140, 160, 255, .14) 1px, transparent 1px), linear-gradient(90deg, rgba(140, 160, 255, .14) 1px, transparent 1px);
+  background-size: 5cqw 5cqw; -webkit-mask-image: linear-gradient(0deg, #000 10%, transparent 85%); mask-image: linear-gradient(0deg, #000 10%, transparent 85%);
+}
+
+/* os dois planos (telas) flutuando */
+.cn-plano {
+  position: absolute; left: 19cqw; top: 7cqw; width: 62cqw; height: 37cqw; container-type: size; border-radius: 2.4cqw;
+  transform-style: preserve-3d; background: #121829; border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow: 0 4cqw 7cqw -3cqw rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.cn-etiqueta {
+  position: absolute; left: 3cqw; top: 2.6cqw; z-index: 5; padding: .6cqw 1.8cqw; border-radius: 99px; font: 700 2.6cqw/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: .04em; text-transform: uppercase; color: #aab3c9; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .1);
+}
+.cn-etiqueta.nova { color: #1a1206; background: linear-gradient(90deg, #f8e3a8, #c9974a); border: 0; }
+
+/* ---- antes: tudo numa coluna só ---- */
+.cn-antes {
+  transform: translateX(-27cqw) translateZ(-16cqw) rotateY(34deg) scale(.82); opacity: .62; filter: saturate(.7);
+  animation: cn-antes var(--t) cubic-bezier(.3, .7, .2, 1) both;
+}
+@keyframes cn-antes {
+  0% { opacity: 0; transform: translateZ(-14cqw) rotateX(14deg) rotateY(18deg); filter: none; }
+  7% { opacity: 1; transform: rotateX(9deg) rotateY(12deg); filter: none; }
+  30%, 38% { opacity: 1; transform: rotateX(7deg) rotateY(-5deg); filter: none; }
+  50%, 100% { transform: translateX(-27cqw) translateZ(-16cqw) rotateY(34deg) scale(.82); opacity: .62; filter: saturate(.7); }
+}
+.cn-antes-janela { position: absolute; left: 3cqw; right: 3cqw; top: 10cqw; bottom: 3cqw; overflow: hidden; border-radius: 1.4cqw; }
+.cn-antes-rolo { display: grid; gap: 1.6cqw; transform: translateY(-45%); animation: cn-rola var(--t) ease-in-out both; }
+@keyframes cn-rola { 0%, 9% { transform: none; } 32%, 100% { transform: translateY(-45%); } }
+.cn-bloco { display: block; height: 6cqw; border-radius: 1.2cqw; background: linear-gradient(90deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .04)); }
+.cn-bloco.alto { height: 11cqw; }
+.cn-bloco.topo { height: 13cqw; background: linear-gradient(120deg, rgba(139, 92, 246, .35), rgba(139, 92, 246, .08)); }
+.cn-antes-cartoes { display: flex; gap: 2cqw; }
+.cn-antes-cartoes i { flex: 1; height: 10cqw; border-radius: 1.2cqw; background: var(--c); opacity: .75; }
+.cn-antes-nota {
+  position: absolute; right: 3cqw; top: 2.6cqw; font: 600 2.6cqw/1.4 Inter, system-ui, sans-serif; color: #ff8a9b;
+  animation: cn-aparece-cedo var(--t) both;
+}
+
+/* ---- depois: carteira, o cartão fora e as abas ---- */
+.cn-depois { transform: translateX(13cqw) rotateY(-14deg); animation: cn-depois var(--t) cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes cn-depois {
+  0%, 38% { opacity: 0; transform: translateX(70cqw) rotateY(-70deg); }
+  52%, 100% { opacity: 1; transform: translateX(13cqw) rotateY(-14deg); }
+}
+.cn-carteira {
+  position: absolute; left: 4cqw; top: 12cqw; width: 31cqw; height: 44cqw; border-radius: 3cqw; overflow: hidden;
+  background: linear-gradient(158deg, #3b2a1f, #241810 55%, #160e09); box-shadow: inset 0 1px 0 rgba(255, 226, 180, .14), 0 2cqw 4cqw -1.5cqw rgba(0, 0, 0, .8);
+}
+.cn-costura { position: absolute; inset: 1.2cqw; border-radius: 2cqw; border: 1px dashed rgba(214, 173, 98, .55); }
+.cn-cartao {
+  position: absolute; display: block; width: 25cqw; aspect-ratio: 1.586; border-radius: 1.6cqw; overflow: hidden;
+  background: radial-gradient(120% 120% at 0 0, color-mix(in srgb, var(--c) 70%, #fff), transparent 50%), linear-gradient(140deg, var(--c), color-mix(in srgb, var(--c) 55%, #060a16));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 1cqw 2cqw -1cqw rgba(0, 0, 0, .7);
+}
+.cn-cartao b { position: absolute; left: 6.5cqw; top: 1.8cqw; font: 700 2.4cqw/1 Inter, system-ui, sans-serif; color: #fff; }
+.cn-cartao-selo { position: absolute; left: 1.8cqw; top: 1.3cqw; width: 3.4cqw; height: 3.4cqw; border-radius: .9cqw; background: rgba(255, 255, 255, .28); }
+.cn-cartao-chip { position: absolute; left: 1.8cqw; top: 6.6cqw; width: 4cqw; height: 3cqw; border-radius: .6cqw; background: linear-gradient(135deg, #fbe7a6, #d6ad4f); }
+.cn-cartao-linha { position: absolute; left: 1.8cqw; bottom: 1.8cqw; width: 12cqw; height: 1cqw; border-radius: 99px; background: rgba(255, 255, 255, .35); }
+.cn-carteira .cn-cartao { left: 3cqw; }
+.cn-carteira .c1 { top: 4.5cqw; animation: cn-desce var(--t) both; --em: 55%; }
+.cn-carteira .c2 { top: 12.5cqw; opacity: 0; animation: cn-desce-e-sai var(--t) both; }
+.cn-carteira .c3 { top: 20.5cqw; animation: cn-desce var(--t) both; --em: 61%; }
+@keyframes cn-desce { 0%, 48% { opacity: 0; transform: translateY(-10cqw); } 58%, 100% { opacity: 1; transform: none; } }
+@keyframes cn-desce-e-sai { 0%, 50% { opacity: 0; transform: translateY(-10cqw); } 58%, 64.9% { opacity: 1; transform: none; } 65%, 100% { opacity: 0; } }
+.cn-bolso {
+  position: absolute; left: 1.6cqw; right: 1.6cqw; bottom: -2cqw; border-radius: 1.2cqw 1.2cqw 0 0;
+  background: linear-gradient(180deg, #4d392b, #34251b 2cqw, #2a1d14); box-shadow: 0 -1.4cqw 2cqw -1cqw rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 225, 180, .18);
+}
+.cn-bolso::before { content: ''; position: absolute; left: 1.4cqw; right: 1.4cqw; top: .9cqw; border-top: 1px dashed rgba(214, 173, 98, .55); }
+.cn-bolso.b1 { top: 10cqw; } .cn-bolso.b2 { top: 18cqw; } .cn-bolso.b3 { top: 26cqw; }
+/* o Itaú que sai: começa na fenda (só o topo aparecendo), sobe, gira e pousa grande à direita */
+.cn-cartao.fora { left: 40cqw; top: 7cqw; width: 38cqw; z-index: 4; animation: cn-sai var(--t) both; }
+@keyframes cn-sai {
+  0%, 64.9% { opacity: 0; transform: translate(-33cqw, 17.5cqw) scale(.658); clip-path: inset(0 0 66% 0); }
+  65% { opacity: 1; transform: translate(-33cqw, 17.5cqw) scale(.658); clip-path: inset(0 0 66% 0); }
+  71% { transform: translate(-33cqw, 5cqw) scale(.658) rotate(-6deg); clip-path: inset(0 0 0 0); }
+  79% { transform: translate(-2cqw, -2cqw) rotateY(-18deg) rotateX(8deg) scale(1.04); }
+  86%, 100% { opacity: 1; transform: none; clip-path: inset(0 0 0 0); }
+}
+.cn-sombra {
+  position: absolute; left: 44cqw; top: 32cqw; width: 30cqw; height: 3cqw; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .6), transparent); animation: cn-aparece-tarde var(--t) both;
+}
+@keyframes cn-aparece-tarde { 0%, 80% { opacity: 0; } 86%, 100% { opacity: 1; } }
+@keyframes cn-aparece-cedo { 0%, 10% { opacity: 0; } 16%, 100% { opacity: 1; } }
+
+.cn-abas {
+  position: absolute; left: 40cqw; top: 37cqw; width: 56cqw; height: 6cqw; display: flex; padding: .6cqw; border-radius: 99px;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .1); animation: cn-abas var(--t) both;
+}
+@keyframes cn-abas { 0%, 80% { opacity: 0; transform: translateY(2cqw); } 85%, 100% { opacity: 1; transform: none; } }
+.cn-abas span { position: relative; z-index: 1; flex: 1; display: grid; place-items: center; font: 600 2.1cqw/1 Inter, system-ui, sans-serif; color: #c9d1e6; white-space: nowrap; }
+.cn-risco {
+  position: absolute; left: .6cqw; top: .6cqw; bottom: .6cqw; width: calc((100% - 1.2cqw) / 4); border-radius: 99px;
+  background: #1f2740; box-shadow: inset 0 0 0 1px rgba(236, 112, 0, .5), 0 0 2cqw -0.5cqw rgba(236, 112, 0, .6);
+  transform: translateX(300%); animation: cn-risco var(--t) cubic-bezier(.3, .7, .2, 1) both;
+}
+@keyframes cn-risco { 0%, 86% { transform: none; } 90%, 92% { transform: translateX(100%); } 96%, 100% { transform: translateX(300%); } }
+.cn-painel {
+  position: absolute; left: 40cqw; top: 45cqw; width: 56cqw; height: 10cqw; border-radius: 1.6cqw; overflow: hidden;
+  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); animation: cn-abas var(--t) both;
+}
+.cn-p { position: absolute; inset: 1.4cqw 2cqw; display: grid; gap: 1cqw; align-content: start; }
+.cn-p b { font: 800 3cqw/1 Inter, system-ui, sans-serif; color: #fff; }
+.cn-p.p1 { opacity: 0; animation: cn-p1 var(--t) both; }
+.cn-p.p2 { opacity: 0; animation: cn-p2 var(--t) both; }
+.cn-p.p3 { animation: cn-p3 var(--t) both; }
+@keyframes cn-p1 { 0%, 84% { opacity: 1; } 89%, 100% { opacity: 0; } }
+@keyframes cn-p2 { 0%, 88% { opacity: 0; } 90%, 92% { opacity: 1; } 95%, 100% { opacity: 0; } }
+@keyframes cn-p3 { 0%, 94% { opacity: 0; } 97%, 100% { opacity: 1; } }
+.cn-linha-tempo { height: .8cqw; border-radius: 99px; background: linear-gradient(90deg, #ec7000 70%, rgba(255, 255, 255, .12) 70%); }
+.cn-barra { height: .8cqw; border-radius: 99px; background: rgba(255, 255, 255, .14); }
+.cn-item { display: block; width: var(--w); height: 1.1cqw; border-radius: 99px; background: rgba(255, 255, 255, .16); }
+.cn-p2 { grid-template-columns: 1fr; }
+.cn-regua { display: block; height: 1.6cqw; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.cn-regua i { display: block; width: 68%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #9a4a00, #ec7000); }
+.cn-fontes { height: .8cqw; width: 60%; border-radius: 99px; background: repeating-linear-gradient(135deg, #d9b26a 0 4px, rgba(217, 178, 106, .6) 4px 7px); }
+
+.cn-de-novo {
+  position: absolute; right: 2cqw; bottom: 2cqw; z-index: 10; padding: .8cqw 2cqw; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(10, 14, 26, .7); color: #e6eaf5; font: 600 clamp(11px, 2.2cqw, 13px)/1.2 Inter, system-ui, sans-serif; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.cn-de-novo:hover { background: rgba(30, 38, 64, .85); }

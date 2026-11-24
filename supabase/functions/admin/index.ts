@@ -197,6 +197,8 @@ const textoNosIdiomas = (v: unknown, max: number) => {
 
 const TIPOS_ARTE = ['texto', 'marca', 'simbolo', 'cartao', 'grafico', 'barras', 'rosca', 'moedas', 'selo', 'botao', 'icone', 'forma', 'brilho']
 const FUNDOS_ARTE = ['noite', 'aurora', 'marca', 'violeta', 'verde', 'claro']
+/** Animações prontas do OpusCash (CenaNovidade.tsx do app). A arte com uma delas não precisa de elementos. */
+const CENAS_ARTE = ['carteira-cartoes']
 const CORES_ARTE = ['branco', 'suave', 'escuro', 'verde', 'azul', 'violeta', 'amarelo', 'rosa', 'ciano']
 const numero = (v: unknown, min: number, max: number, padrao: number) => {
   const n = Number(v)
@@ -229,11 +231,13 @@ function limparArte(v: unknown) {
     if (e.contorno !== undefined) r.contorno = Boolean(e.contorno)
     return [r]
   })
-  if (!elementos.length) return null
+  const animacao = CENAS_ARTE.includes(a.animacao as string) ? a.animacao as string : null
+  if (!elementos.length && !animacao) return null
   return {
     formato: a.formato === 'deitado' ? 'deitado' : 'em_pe',
     fundo: FUNDOS_ARTE.includes(a.fundo as string) ? a.fundo : 'noite',
     elementos,
+    ...(animacao ? { animacao } : {}),
   }
 }
 
@@ -242,9 +246,12 @@ function limparNovidade(v: unknown) {
   const n = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
   const titulo = textoNosIdiomas(n.titulo, 60)
   if (!titulo.pt) throw new Recusa('Escreva o título.')
-  const itens = (Array.isArray(n.itens) ? n.itens : []).slice(0, 4).map((it) => {
+  const arte = limparArte(n.arte)
+  // com animação pronta, o primeiro item é o texto embaixo dela (uma frase, até 160 letras)
+  const comCena = Boolean(arte && 'animacao' in arte)
+  const itens = (Array.isArray(n.itens) ? n.itens : []).slice(0, comCena ? 1 : 4).map((it) => {
     const i = (it && typeof it === 'object' ? it : {}) as Record<string, unknown>
-    return { icone: nomeCurto(i.icone) ?? 'estrela', texto: textoNosIdiomas(i.texto, 40) }
+    return { icone: nomeCurto(i.icone) ?? 'estrela', texto: textoNosIdiomas(i.texto, comCena ? 160 : 40) }
   }).filter((it) => it.texto.pt)
   return {
     titulo, itens,
@@ -252,7 +259,7 @@ function limparNovidade(v: unknown) {
     cor: CORES_NOVIDADE.includes(n.cor as string) ? n.cor as string : 'marca',
     tela: nomeCurto(n.tela),
     onde: ONDE_NOVIDADE.includes(n.onde as string) ? n.onde as string : 'todos',
-    arte: limparArte(n.arte),
+    arte,
   }
 }
 

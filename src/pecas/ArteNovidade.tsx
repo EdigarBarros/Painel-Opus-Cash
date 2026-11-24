@@ -48,7 +48,11 @@ export interface Elemento {
   raio?: number
   contorno?: boolean
 }
-export interface Arte { formato: Formato; fundo: Fundo; elementos: Elemento[] }
+export interface Arte {
+  formato: Formato; fundo: Fundo; elementos: Elemento[]
+  /** animação pronta do OpusCash (CenaNovidade.tsx) no lugar dos elementos; o editor do painel não mexe nela */
+  animacao?: string
+}
 
 type Idioma = 'pt' | 'en' | 'es'
 const noIdioma = (t: Texto | undefined, i: Idioma) => (t ? (i !== 'pt' && t[i]?.trim()) || t.pt : '')

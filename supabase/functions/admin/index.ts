@@ -69,7 +69,8 @@ async function contaAlvo(db: SupabaseClient, id: string) {
 }
 
 async function naoEhAdmin(db: SupabaseClient, id: string) {
-  const { data } = await db.from('adm_admins').select('user_id').eq('user_id', id).maybeSingle()
+  const { data, error } = await db.from('adm_admins').select('user_id').eq('user_id', id).maybeSingle()
+  if (error) throw new Recusa('Não foi possível verificar a conta de destino.', 503)
   if (data) throw new Recusa('Esta ação não pode ser feita na conta de um administrador.')
 }
 
@@ -518,52 +519,29 @@ async function executar(acao: string, p: Record<string, unknown>, db: SupabaseCl
       return { ok: true }
     }
     case 'senha_email': {
-      // manda o e-mail de "Crie uma senha nova" (o mesmo do "Esqueci minha senha" do site). O suporte nunca vê nem define a senha.
       const u = await contaAlvo(db, uuid(p.id))
-      const { error } = await publico.auth.resetPasswordForEmail(u.email!, { redirectTo: SITE })
+      await naoEhAdmin(db, u.id)
+      if (!u.email) throw new Recusa('A conta não tem e-mail cadastrado.')
+      const { error } = await publico.auth.resetPasswordForEmail(u.email, { redirectTo: SITE })
       if (error) throw new Recusa(/rate|limit/i.test(error.message)
-        ? 'O limite de e-mails do Supabase foi atingido agora. Use "Gerar link" e mande pelo WhatsApp.' : error.message)
+        ? 'O limite de e-mails foi atingido. Aguarde antes de tentar novamente.' : error.message)
       await registrar(db, admin, 'senha_email', { id: u.id, email: u.email })
       return { ok: true }
     }
-    case 'senha_link': {
-      // gera o link de criar senha nova sem mandar e-mail, para o suporte entregar por outro canal (vale uma vez, expira)
-      const u = await contaAlvo(db, uuid(p.id))
-      const motivo = motivoObrigatorio(p.motivo)
-      const { data, error } = await db.auth.admin.generateLink({ type: 'recovery', email: u.email!, options: { redirectTo: SITE } })
-      if (error) throw new Recusa(error.message)
-      await registrar(db, admin, 'senha_link', { id: u.id, email: u.email }, motivo)
-      return { link: data.properties.action_link }
-    }
     case 'reenviar_confirmacao': {
       const u = await contaAlvo(db, uuid(p.id))
+      await naoEhAdmin(db, u.id)
+      if (!u.email) throw new Recusa('A conta não tem e-mail cadastrado.')
       if (u.email_confirmed_at) throw new Recusa('O e-mail desta conta já está confirmado.')
-      const { error } = await publico.auth.resend({ type: 'signup', email: u.email!, options: { emailRedirectTo: SITE } })
+      const { error } = await publico.auth.resend({ type: 'signup', email: u.email, options: { emailRedirectTo: SITE } })
       if (error) throw new Recusa(error.message)
       await registrar(db, admin, 'reenviar_confirmacao', { id: u.id, email: u.email })
       return { ok: true }
     }
-    case 'confirmar_email': {
-      const u = await contaAlvo(db, uuid(p.id))
-      const motivo = motivoObrigatorio(p.motivo)
-      if (u.email_confirmed_at) throw new Recusa('O e-mail desta conta já está confirmado.')
-      const { error } = await db.auth.admin.updateUserById(u.id, { email_confirm: true })
-      if (error) throw new Recusa(error.message)
-      await registrar(db, admin, 'confirmar_email', { id: u.id, email: u.email }, motivo)
-      return { ok: true }
-    }
-    case 'trocar_email': {
-      const u = await contaAlvo(db, uuid(p.id))
-      const motivo = motivoObrigatorio(p.motivo)
-      await naoEhAdmin(db, u.id)
-      const novo = texto(p.email, 254).toLowerCase()
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(novo)) throw new Recusa('E-mail novo inválido.')
-      if (novo === u.email?.toLowerCase()) throw new Recusa('O e-mail novo é igual ao atual.')
-      const { error } = await db.auth.admin.updateUserById(u.id, { email: novo, email_confirm: true })
-      if (error) throw new Recusa(/already|exists|registered/i.test(error.message) ? 'Já existe uma conta com esse e-mail.' : error.message)
-      await registrar(db, admin, 'trocar_email', { id: u.id, email: novo }, motivo, { email: u.email }, { email: novo })
-      return { ok: true }
-    }
+    case 'senha_link':
+    case 'confirmar_email':
+    case 'trocar_email':
+      throw new Recusa('Esta ação de conta não está disponível para o suporte.', 403)
     case 'bloquear':
     case 'desbloquear': {
       const u = await contaAlvo(db, uuid(p.id))

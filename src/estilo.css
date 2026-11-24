@@ -358,7 +358,6 @@ input[type=checkbox], input[type=radio] { accent-color: var(--principal); width:
 .lista li { padding: 9px 0; border-bottom: 1px solid var(--separador); font-size: 14px; }
 .lista li:last-child { border-bottom: 0; }
 .lista-obs { display: block; color: var(--texto-3); font-size: 13px; }
-.link-gerado { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; word-break: break-all; }
 .pagina-topo { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .pagina-topo h1 { font-size: 34px; margin: 0; }
 .pagina-topo .sub { margin: 6px 0 0; color: var(--texto-2); }

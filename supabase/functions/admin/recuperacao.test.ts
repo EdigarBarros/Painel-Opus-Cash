@@ -19,8 +19,8 @@ try {
 }
 assert.ok(atender)
 
-function acao(acao: string, id = cliente.id, aal = 'aal2', usuario = operador, campos: Record<string, unknown> = {}) {
-  const corpo = btoa(JSON.stringify({ sub: usuario.id, aal })).replace(/=+$/, '')
+function acao(acao: string, id = cliente.id, aal = 'aal2', usuario = operador, campos: Record<string, unknown> = {}, amr?: unknown) {
+  const corpo = btoa(JSON.stringify({ sub: usuario.id, aal, ...(amr ? { amr } : {}) })).replace(/=+$/, '')
   return atender!(new Request('https://funcoes-de-teste.example/admin', {
     method: 'POST',
     headers: { Authorization: `Bearer eyJhbGciOiJIUzI1NiJ9.${corpo}.assinatura-de-teste` },
@@ -140,5 +140,16 @@ Deno.test('a falha no registro inicial impede o bloqueio', async () => {
     const resp = await acao('bloquear', cliente.id, 'aal2', operador, { motivo: 'Verificação local' })
     assert.equal(resp.status, 500)
     assert.deepEqual(mock.eventos.map((e) => e.tipo), ['auditoria'])
+  } finally { mock.restaurar() }
+})
+
+Deno.test('senha digitada há mais de 7 dias pede o login de novo', async () => {
+  const mock = simularAuth()
+  try {
+    const agora = Math.floor(Date.now() / 1000)
+    const velha = await acao('eu', cliente.id, 'aal2', operador, {}, [{ method: 'totp', timestamp: agora }, { method: 'password', timestamp: agora - 8 * 86400 }])
+    assert.equal(velha.status, 401)
+    const nova = await acao('eu', cliente.id, 'aal2', operador, {}, [{ method: 'totp', timestamp: agora }, { method: 'password', timestamp: agora - 6 * 86400 }])
+    assert.equal(nova.status, 200)
   } finally { mock.restaurar() }
 })

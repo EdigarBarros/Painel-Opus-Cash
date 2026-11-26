@@ -29,14 +29,30 @@ class Recusa extends Error {
   constructor(msg: string, public status = 400) { super(msg) }
 }
 
-/** Lê o conteúdo do token (já validado por getUser) para saber se o login passou pelo código do celular. */
-function nivelDoLogin(token: string): string {
+/** Conteúdo do token (já validado por getUser). */
+function conteudoDoToken(token: string): Record<string, unknown> {
   try {
     const meio = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(meio.padEnd(meio.length + ((4 - (meio.length % 4)) % 4), '='))).aal ?? 'aal1'
+    return JSON.parse(atob(meio.padEnd(meio.length + ((4 - (meio.length % 4)) % 4), '=')))
   } catch {
-    return 'aal1'
+    return {}
   }
+}
+
+/** Se o login passou pelo código do celular (aal2). */
+function nivelDoLogin(token: string): string {
+  const aal = conteudoDoToken(token).aal
+  return typeof aal === 'string' ? aal : 'aal1'
+}
+
+/** "Manter conectado" do painel vale 7 dias: a senha precisa ter sido digitada nesse prazo (o token guarda quando foi). */
+const PRAZO_DA_SENHA = 7 * 24 * 60 * 60
+function senhaVencida(token: string): boolean {
+  const amr = conteudoDoToken(token).amr
+  if (!Array.isArray(amr)) return false
+  const quando = amr.filter((x) => x?.method === 'password' && typeof x.timestamp === 'number').map((x) => x.timestamp as number)
+  if (!quando.length) return false
+  return Date.now() / 1000 - Math.max(...quando) > PRAZO_DA_SENHA
 }
 
 const texto = (v: unknown, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
@@ -655,6 +671,7 @@ Deno.serve(async (req) => {
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
     const { data: { user } } = await db.auth.getUser(token)
     if (!user) return responder({ erro: 'Entre de novo.' }, 401)
+    if (senhaVencida(token)) return responder({ erro: 'Faz mais de 7 dias que você digitou a senha. Entre de novo.' }, 401)
     const { data: adm } = await db.from('adm_admins').select('email').eq('user_id', user.id).maybeSingle()
     const nivel = nivelDoLogin(token)
 

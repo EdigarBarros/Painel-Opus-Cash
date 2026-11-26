@@ -16,7 +16,7 @@ Usa o **mesmo projeto Supabase do OpusCash** (`jyadqrepdueiiyskexmq`). Não tem 
    mudam algo). Abrir uma ficha também fica registrado.
 4. **O painel não lê as finanças de ninguém.** Só conta, perfil, assinatura, pagamentos e erros.
 5. O suporte pode reenviar a recuperação ou a confirmação para o e-mail cadastrado da pessoa. A equipe não recebe o link, não confirma endereços manualmente e não troca o e-mail da conta pelo painel.
-6. A sessão fica na aba e é encerrada ao sair. O site pede novo login ao abrir uma nova aba. O painel usa `noindex` e `robots.txt`.
+6. A sessão fica na aba e é encerrada ao sair. Com "Manter conectado por 7 dias" (tela de entrar), fica no aparelho por no máximo 7 dias desde a senha; a função `admin` também recusa senha digitada há mais de 7 dias. O código do celular é pedido em todo login. O painel usa `noindex` e `robots.txt`.
 
 ## O que cada tela faz
 
